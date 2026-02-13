@@ -117,6 +117,28 @@ logout_modal = dbc.Modal([
     ]),
 ], id="logout-modal", centered=True)
 
+# Login modal
+login_modal = dbc.Modal([
+    dbc.ModalHeader(dbc.ModalTitle([
+        html.I(className="fas fa-sign-in-alt me-2"),
+        "Login Required"
+    ])),
+    dbc.ModalBody([
+        html.P("Please connect to a database to access this feature."),
+        html.Div(id="login-error-message")
+    ]),
+    dbc.ModalFooter([
+        dbc.Button([
+            html.I(className="fas fa-database me-2"),
+            "Connect to Database"
+        ], href="/apps/db_connection", color="primary"),
+        dbc.Button([
+            html.I(className="fas fa-times me-2"),
+            "Cancel"
+        ], id="cancel-login-btn", color="secondary"),
+    ]),
+], id="login-modal", centered=True)
+
 # Modernized Navbar with Gradient
 navbar = dbc.Navbar(
     dbc.Container([
@@ -124,7 +146,6 @@ navbar = dbc.Navbar(
         html.A(
             dbc.Row([
                 html.Img(src="/assets/aibes.png", height="40px"),
-                
             ],
             align="center",
             className="g-0"
@@ -156,10 +177,16 @@ navbar = dbc.Navbar(
         navbar=True,
         ),
 
-        # Connection Status and Logout
+        # Connection Status and Authentication Buttons
         html.Div([
             html.Div(id="navbar-connection-status", className="d-flex align-items-center me-3"),
+            # Always present login and logout buttons (visibility controlled by CSS)
             dbc.Button([
+                html.I(className="fas fa-sign-in-alt me-1"),
+                "Login"
+            ], id="login-btn", color="success", size="sm", className="btn-sm me-2", href="/apps/db_connection"),
+            dbc.Button([
+                html.I(className="fas fa-sign-out-alt me-1"),
                 "Logout"
             ], id="logout-btn", color="danger", size="sm", className="btn-sm"),
         ], className="d-flex align-items-center"),
@@ -199,6 +226,8 @@ app.layout = html.Div([
     dcc.Store(id='session-id'), 
     # Logout confirmation modal
     logout_modal,
+    # Login modal
+    login_modal,
     # Modernized navbar
     navbar,
     # Mobile menu
@@ -229,25 +258,69 @@ def toggle_navbar_collapse(n_clicks, is_open):
         return not is_open
     return is_open
 
-# Logout modal callbacks
+# Combined modal callback for both login and logout modals
 @app.callback(
-    Output("logout-modal", "is_open"),
+    [Output("logout-modal", "is_open"),
+     Output("login-modal", "is_open")],
     [Input("logout-btn", "n_clicks"),
-     Input("cancel-logout-btn", "n_clicks")],
-    prevent_initial_call=True
+     Input("cancel-logout-btn", "n_clicks"),
+     Input("cancel-login-btn", "n_clicks"),
+     Input("url", "pathname")],
+    prevent_initial_call=False
 )
-def toggle_logout_modal(open_clicks, close_clicks):
+def handle_modals(logout_clicks, cancel_logout_clicks, cancel_login_clicks, pathname):
     ctx = dash.callback_context
-    if not ctx.triggered:
-        return False
     
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    # Default state - both modals closed
+    logout_modal_open = False
+    login_modal_open = False
     
-    if button_id == "logout-btn":
-        return True
-    elif button_id == "cancel-logout-btn":
-        return False
-    return False
+    if ctx.triggered:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        
+        # Handle logout modal triggers
+        if button_id == "logout-btn":
+            logout_modal_open = True
+        elif button_id == "cancel-logout-btn":
+            logout_modal_open = False
+            
+        # Handle login modal triggers
+        elif button_id == "cancel-login-btn":
+            login_modal_open = False
+            
+        # Handle protected route access
+        protected_pages = [
+            '/apps/dashboard', 
+            '/apps/settings', 
+            '/apps/land_bank_analysis', 
+            '/apps/project_analysis', 
+            '/apps/sales_analysis', 
+            '/apps/reports_view'
+        ]
+        
+        if button_id == "url.pathname" and pathname in protected_pages:
+            if not get_user_db_connection():
+                login_modal_open = True
+    
+    return [logout_modal_open, login_modal_open]
+
+# Auth buttons visibility callback
+@app.callback(
+    [Output("login-btn", "style"),
+     Output("logout-btn", "style")],
+    [Input("url", "pathname")],
+    prevent_initial_call=False
+)
+def update_auth_button_visibility(pathname):
+    # Check if user is connected
+    is_connected = 'db_connection_string' in session and session['db_connection_string']
+    
+    if is_connected:
+        # Hide login button, show logout button
+        return [{"display": "none"}, {"display": "block"}]
+    else:
+        # Show login button, hide logout button
+        return [{"display": "block"}, {"display": "none"}]
 
 @app.callback(
     [Output('page-content', 'children'),
@@ -444,5 +517,5 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     
     # Run the app
-    app.run(host='0.0.0.0', port=port, debug=False)
-    
+    # app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(debug=True)

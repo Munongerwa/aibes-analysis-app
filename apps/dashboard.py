@@ -208,22 +208,59 @@ layout = html.Div([
                 ], className="shadow-sm h-100")
             ], width=12, md=6, lg=3),
             
+            # Stands Available for Sale
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-tags fa-2x text-info"),
+                            ], className="d-flex justify-content-center mb-3"),
+                            html.H4("Available Stands", className="card-title text-center"),
+                            html.H2(id="stands-available-value", children="0", className="text-center text-info fw-bold"),
+                            html.P(id="stands-available-period", children="Period: --", className="text-center text-muted small"),
+                            html.Div(id="stands-available-yoy", className="text-center mt-2")
+                        ], className="text-center")
+                    ])
+                ], className="shadow-sm h-100")
+            ], width=12, md=6, lg=3),
+            
+            # Reserved Stands
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-lock fa-2x text-warning"),
+                            ], className="d-flex justify-content-center mb-3"),
+                            html.H4("Reserved Stands", className="card-title text-center"),
+                            html.H2(id="stands-reserved-value", children="0", className="text-center text-warning fw-bold"),
+                            html.P(id="stands-reserved-period", children="Period: --", className="text-center text-muted small"),
+                            html.Div(id="stands-reserved-yoy", className="text-center mt-2")
+                        ], className="text-center")
+                    ])
+                ], className="shadow-sm h-100")
+            ], width=12, md=6, lg=3),
+        ], className="mb-4 g-3"),
+        
+        # Additional Metrics Row
+        dbc.Row([
             # Total deposit card
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-money-bill-wave fa-2x text-info"),
+                                html.I(className="fas fa-money-bill-wave fa-2x text-success"),
                             ], className="d-flex justify-content-center mb-3"),
                             html.H4("Total Deposit", className="card-title text-center"),
-                            html.H2(id="total-deposit-value", children="$0", className="text-center text-info fw-bold"),
+                            html.H2(id="total-deposit-value", children="$0", className="text-center text-success fw-bold"),
                             html.P(id="deposit-period", children="Period: --", className="text-center text-muted small"),
                             html.Div(id="deposit-yoy", className="text-center mt-2")
                         ], className="text-center")
                     ])
                 ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
+            ], width=12, md=6, lg=4),
             
             # Total installment card
             dbc.Col([
@@ -231,16 +268,33 @@ layout = html.Div([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-file-invoice-dollar fa-2x text-warning"),
+                                html.I(className="fas fa-file-invoice-dollar fa-2x text-primary"),
                             ], className="d-flex justify-content-center mb-3"),
                             html.H4("Total Installment", className="card-title text-center"),
-                            html.H2(id="total-installment-value", children="$0", className="text-center text-warning fw-bold"),
+                            html.H2(id="total-installment-value", children="$0", className="text-center text-primary fw-bold"),
                             html.P(id="installment-period", children="Period: --", className="text-center text-muted small"),
                             html.Div(id="installment-yoy", className="text-center mt-2")
                         ], className="text-center")
                     ])
                 ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
+            ], width=12, md=6, lg=4),
+            
+            # Conversion Rate
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-percentage fa-2x text-info"),
+                            ], className="d-flex justify-content-center mb-3"),
+                            html.H4("Conversion Rate", className="card-title text-center"),
+                            html.H2(id="conversion-rate-value", children="0%", className="text-center text-info fw-bold"),
+                            html.P(id="conversion-period", children="Period: --", className="text-center text-muted small"),
+                            html.Div(id="conversion-yoy", className="text-center mt-2")
+                        ], className="text-center")
+                    ])
+                ], className="shadow-sm h-100")
+            ], width=12, md=12, lg=4),
         ], className="mb-4 g-3"),
         
         # Graphs Row
@@ -429,18 +483,27 @@ def update_project_performance_chart(time_filter, selected_year):
     [Output("dashboard-connection-status", "children"),
      Output("total-stand-value", "children"),
      Output("stands-sold-value", "children"),
+     Output("stands-available-value", "children"),
+     Output("stands-reserved-value", "children"),
      Output("total-deposit-value", "children"),
      Output("total-installment-value", "children"),
+     Output("conversion-rate-value", "children"),
      Output("stand-value-period", "children"),
      Output("stands-sold-period", "children"),
+     Output("stands-available-period", "children"),
+     Output("stands-reserved-period", "children"),
      Output("deposit-period", "children"),
      Output("installment-period", "children"),
+     Output("conversion-period", "children"),
      Output("deposits-installments-pie", "figure"),
      Output("stands-sold-area", "figure"),
      Output("stand-value-yoy", "children"),
      Output("stands-sold-yoy", "children"),
+     Output("stands-available-yoy", "children"),
+     Output("stands-reserved-yoy", "children"),
      Output("deposit-yoy", "children"),
      Output("installment-yoy", "children"),
+     Output("conversion-yoy", "children"),
      Output("report-data-store", "children")],  # Stored as JSON string
     [Input("time-filter-radio", "value"),
      Input("year-dropdown", "value")],
@@ -481,10 +544,10 @@ def update_dashboard_metrics(time_filter, selected_year):
         ], className="text-muted small")
         
         # Return empty JSON string for report data
-        return [not_connected_alert, "$0", "0", "$0", "$0", 
-                period_text, period_text, period_text, period_text,
+        return [not_connected_alert, "$0", "0", "0", "0", "$0", "$0", "0%", 
+                period_text, period_text, period_text, period_text, period_text, period_text, period_text,
                 empty_fig, empty_fig,
-                default_yoy, default_yoy, default_yoy, default_yoy, "{}"]
+                default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, "{}"]
     
     try:
         #WHERE clause based on time filter
@@ -517,7 +580,7 @@ def update_dashboard_metrics(time_filter, selected_year):
             stands_sold_query = f"""
             SELECT COUNT(stand_number) AS total_stands_sold
             FROM Stands
-            WHERE {date_condition}
+            WHERE {date_condition} AND available = 0
             """
             stands_sold_df = pd.read_sql(stands_sold_query, engine)
             current_stands_sold = stands_sold_df.iloc[0]['total_stands_sold'] if not stands_sold_df.empty and not pd.isna(stands_sold_df.iloc[0]['total_stands_sold']) else 0
@@ -525,6 +588,34 @@ def update_dashboard_metrics(time_filter, selected_year):
             print(f"Stands sold query error: {e}")
             current_stands_sold = 0
         formatted_stands_sold = str(current_stands_sold) if current_stands_sold else "0"
+        
+        # Stands Available for Sale (available = 1 AND to_sale = 1)
+        try:
+            stands_available_query = f"""
+            SELECT COUNT(stand_number) AS total_stands_available
+            FROM Stands
+            WHERE {date_condition} AND available = 1 AND to_sale = 1
+            """
+            stands_available_df = pd.read_sql(stands_available_query, engine)
+            current_stands_available = stands_available_df.iloc[0]['total_stands_available'] if not stands_available_df.empty and not pd.isna(stands_available_df.iloc[0]['total_stands_available']) else 0
+        except Exception as e:
+            print(f"Stands available query error: {e}")
+            current_stands_available = 0
+        formatted_stands_available = str(current_stands_available) if current_stands_available else "0"
+        
+        # Reserved Stands (available = 1 AND to_sale = 0)
+        try:
+            stands_reserved_query = f"""
+            SELECT COUNT(stand_number) AS total_stands_reserved
+            FROM Stands
+            WHERE {date_condition} AND available = 1 AND to_sale = 0
+            """
+            stands_reserved_df = pd.read_sql(stands_reserved_query, engine)
+            current_stands_reserved = stands_reserved_df.iloc[0]['total_stands_reserved'] if not stands_reserved_df.empty and not pd.isna(stands_reserved_df.iloc[0]['total_stands_reserved']) else 0
+        except Exception as e:
+            print(f"Stands reserved query error: {e}")
+            current_stands_reserved = 0
+        formatted_stands_reserved = str(current_stands_reserved) if current_stands_reserved else "0"
         
         #Total Deposit
         try:
@@ -554,12 +645,35 @@ def update_dashboard_metrics(time_filter, selected_year):
             current_installment = 0
         formatted_installment = f"${current_installment:,.2f}" if current_installment else "$0"
         
+        # Conversion Rate Calculation
+        try:
+            # Total stands registered (both sold and available)
+            total_registered_query = f"""
+            SELECT COUNT(stand_number) AS total_registered
+            FROM Stands
+            WHERE {date_condition}
+            """
+            total_registered_df = pd.read_sql(total_registered_query, engine)
+            total_registered = total_registered_df.iloc[0]['total_registered'] if not total_registered_df.empty and not pd.isna(total_registered_df.iloc[0]['total_registered']) else 0
+            
+            if total_registered > 0:
+                conversion_rate = (current_stands_sold / total_registered) * 100
+            else:
+                conversion_rate = 0
+        except Exception as e:
+            print(f"Conversion rate query error: {e}")
+            conversion_rate = 0
+        formatted_conversion_rate = f"{conversion_rate:.1f}%" if conversion_rate else "0%"
+        
         # Store data for report (as JSON string)
         report_data = {
             'total_stand_value': formatted_stand_value,
             'stands_sold': formatted_stands_sold,
+            'stands_available': formatted_stands_available,
+            'stands_reserved': formatted_stands_reserved,
             'total_deposit': formatted_deposit,
             'total_installment': formatted_installment,
+            'conversion_rate': formatted_conversion_rate,
             'period_text': period_text
         }
         report_data_json = json.dumps(report_data)
@@ -581,7 +695,7 @@ def update_dashboard_metrics(time_filter, selected_year):
                 else:
                     return html.Span([
                         html.I(className="fas fa-arrow-up me-1 text-success"),
-                        f"+∞% (Prev: $0)"
+                        f"+∞% (Prev: 0)"
                     ], className="text-success small")
             else:
                 change = ((current - previous) / previous) * 100
@@ -597,7 +711,7 @@ def update_dashboard_metrics(time_filter, selected_year):
                 
                 return html.Span([
                     html.I(className=icon_class),
-                    f"{change:+.1f}% (Prev: ${previous:,.0f})"
+                    f"{change:+.1f}% (Prev: {previous:,.0f})"
                 ], className=text_class)
         
         # Only calculate YoY for yearly view
@@ -620,12 +734,34 @@ def update_dashboard_metrics(time_filter, selected_year):
                 prev_sold_query = f"""
                 SELECT COUNT(stand_number) AS total_stands_sold
                 FROM Stands
-                WHERE YEAR(registration_date) = {previous_year}
+                WHERE YEAR(registration_date) = {previous_year} AND available = 0
                 """
                 prev_sold_df = pd.read_sql(prev_sold_query, engine)
                 previous_stands_sold = prev_sold_df.iloc[0]['total_stands_sold'] if not prev_sold_df.empty and not pd.isna(prev_sold_df.iloc[0]['total_stands_sold']) else 0
             except:
                 previous_stands_sold = 0
+                
+            try:
+                prev_available_query = f"""
+                SELECT COUNT(stand_number) AS total_stands_available
+                FROM Stands
+                WHERE YEAR(registration_date) = {previous_year} AND available = 1 AND to_sale = 1
+                """
+                prev_available_df = pd.read_sql(prev_available_query, engine)
+                previous_stands_available = prev_available_df.iloc[0]['total_stands_available'] if not prev_available_df.empty and not pd.isna(prev_available_df.iloc[0]['total_stands_available']) else 0
+            except:
+                previous_stands_available = 0
+                
+            try:
+                prev_reserved_query = f"""
+                SELECT COUNT(stand_number) AS total_stands_reserved
+                FROM Stands
+                WHERE YEAR(registration_date) = {previous_year} AND available = 1 AND to_sale = 0
+                """
+                prev_reserved_df = pd.read_sql(prev_reserved_query, engine)
+                previous_stands_reserved = prev_reserved_df.iloc[0]['total_stands_reserved'] if not prev_reserved_df.empty and not pd.isna(prev_reserved_df.iloc[0]['total_stands_reserved']) else 0
+            except:
+                previous_stands_reserved = 0
                 
             try:
                 prev_deposit_query = f"""
@@ -649,17 +785,37 @@ def update_dashboard_metrics(time_filter, selected_year):
             except:
                 previous_installment = 0
             
+            # Previous conversion rate
+            try:
+                prev_registered_query = f"""
+                SELECT COUNT(stand_number) AS total_registered
+                FROM Stands
+                WHERE YEAR(registration_date) = {previous_year}
+                """
+                prev_registered_df = pd.read_sql(prev_registered_query, engine)
+                previous_registered = prev_registered_df.iloc[0]['total_registered'] if not prev_registered_df.empty and not pd.isna(prev_registered_df.iloc[0]['total_registered']) else 0
+                
+                if previous_registered > 0:
+                    previous_conversion_rate = (previous_stands_sold / previous_registered) * 100
+                else:
+                    previous_conversion_rate = 0
+            except:
+                previous_conversion_rate = 0
+            
             stand_value_yoy = calculate_yoy_change(current_stand_value, previous_stand_value)
             stands_sold_yoy = calculate_yoy_change(current_stands_sold, previous_stands_sold)
+            stands_available_yoy = calculate_yoy_change(current_stands_available, previous_stands_available)
+            stands_reserved_yoy = calculate_yoy_change(current_stands_reserved, previous_stands_reserved)
             deposit_yoy = calculate_yoy_change(current_deposit, previous_deposit)
             installment_yoy = calculate_yoy_change(current_installment, previous_installment)
+            conversion_yoy = calculate_yoy_change(conversion_rate, previous_conversion_rate)
         else:
             # Default YoY for non-yearly views
             default_yoy = html.Span([
                 html.I(className="fas fa-minus-circle me-1 text-muted"),
                 "N/A"
             ], className="text-muted small")
-            stand_value_yoy = stands_sold_yoy = deposit_yoy = installment_yoy = default_yoy
+            stand_value_yoy = stands_sold_yoy = stands_available_yoy = stands_reserved_yoy = deposit_yoy = installment_yoy = conversion_yoy = default_yoy
         
         #Deposits vs Installments
         pie_data = [current_deposit, current_installment]
@@ -699,7 +855,7 @@ def update_dashboard_metrics(time_filter, selected_year):
                     MONTH(registration_date) AS month,
                     COUNT(stand_number) AS total_stands_sold
                 FROM Stands
-                WHERE YEAR(registration_date) = {selected_year}
+                WHERE YEAR(registration_date) = {selected_year} AND available = 0
                 GROUP BY MONTH(registration_date)
                 ORDER BY month
                 """
@@ -824,7 +980,7 @@ def update_dashboard_metrics(time_filter, selected_year):
                     DATE(registration_date) AS day,
                     COUNT(stand_number) AS total_stands_sold
                 FROM Stands
-                WHERE registration_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                WHERE registration_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND available = 0
                 GROUP BY DATE(registration_date)
                 ORDER BY day
                 """
@@ -867,7 +1023,7 @@ def update_dashboard_metrics(time_filter, selected_year):
                     HOUR(registration_date) AS hour,
                     COUNT(stand_number) AS total_stands_sold
                 FROM Stands
-                WHERE DATE(registration_date) = CURDATE()
+                WHERE DATE(registration_date) = CURDATE() AND available = 0
                 GROUP BY HOUR(registration_date)
                 ORDER BY hour
                 """
@@ -907,11 +1063,12 @@ def update_dashboard_metrics(time_filter, selected_year):
                 margin=dict(l=40, r=20, t=50, b=40)
             )
 
-        return [status, formatted_stand_value, formatted_stands_sold, formatted_deposit, 
-                formatted_installment, period_text, period_text,
-                period_text, period_text,
+        return [status, formatted_stand_value, formatted_stands_sold, formatted_stands_available, 
+                formatted_stands_reserved, formatted_deposit, formatted_installment, formatted_conversion_rate,
+                period_text, period_text, period_text, period_text, period_text, period_text, period_text,
                 pie_fig, area_fig,
-                stand_value_yoy, stands_sold_yoy, deposit_yoy, installment_yoy, report_data_json]
+                stand_value_yoy, stands_sold_yoy, stands_available_yoy, stands_reserved_yoy, 
+                deposit_yoy, installment_yoy, conversion_yoy, report_data_json]
         
     except Exception as e:
         print(f"Main callback error: {e}")
@@ -934,10 +1091,10 @@ def update_dashboard_metrics(time_filter, selected_year):
             "N/A"
         ], className="text-muted small")
         
-        return [error_alert, "$0", "0", "$0", "$0", 
-                period_text, period_text, period_text, period_text,
+        return [error_alert, "$0", "0", "0", "0", "$0", "$0", "0%", 
+                period_text, period_text, period_text, period_text, period_text, period_text, period_text,
                 empty_fig, empty_fig,
-                default_yoy, default_yoy, default_yoy, default_yoy, "{}"]
+                default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, default_yoy, "{}"]
     finally:
         if engine:
             try:

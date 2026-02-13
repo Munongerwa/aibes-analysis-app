@@ -5,12 +5,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from flask import session
 
-
-
 layout = html.Div([
     dcc.Location(id="db-connection-url", refresh=True),  
     
-    #background image 
+    # Background image 
     html.Div(
         style={
             'position': 'fixed',
@@ -26,7 +24,7 @@ layout = html.Div([
         }
     ),
     
-    # Content container
+    # Content container with responsive design
     dbc.Container([
         dbc.Row([
             dbc.Col([
@@ -44,7 +42,7 @@ layout = html.Div([
                                 dbc.Label([
                                     html.I(className="fas fa-server me-2"),
                                     "Host"
-                                ], width=4, className="d-flex align-items-center text-white"),
+                                ], width=12, md=4, className="d-flex align-items-center text-white mb-2 mb-md-0"),
                                 dbc.Col([
                                     dbc.Input(
                                         type="text", 
@@ -53,14 +51,14 @@ layout = html.Div([
                                         value="localhost",
                                         className="form-control"
                                     ),
-                                ], width=8)
-                            ], className="mb-3"),
+                                ], width=12, md=8)
+                            ], className="mb-3 align-items-center"),
                             
                             dbc.Row([
                                 dbc.Label([
                                     html.I(className="fas fa-database me-2"),
                                     "Database"
-                                ], width=4, className="d-flex align-items-center text-white"),
+                                ], width=12, md=4, className="d-flex align-items-center text-white mb-2 mb-md-0"),
                                 dbc.Col([
                                     dbc.Input(
                                         type="text", 
@@ -68,14 +66,14 @@ layout = html.Div([
                                         placeholder="Enter database name",
                                         className="form-control"
                                     ),
-                                ], width=8)
-                            ], className="mb-3"),
+                                ], width=12, md=8)
+                            ], className="mb-3 align-items-center"),
                             
                             dbc.Row([
                                 dbc.Label([
                                     html.I(className="fas fa-user me-2"),
                                     "Username"
-                                ], width=4, className="d-flex align-items-center text-white"),
+                                ], width=12, md=4, className="d-flex align-items-center text-white mb-2 mb-md-0"),
                                 dbc.Col([
                                     dbc.Input(
                                         type="text", 
@@ -83,14 +81,14 @@ layout = html.Div([
                                         placeholder="Enter username",
                                         className="form-control"
                                     ),
-                                ], width=8)
-                            ], className="mb-3"),
+                                ], width=12, md=8)
+                            ], className="mb-3 align-items-center"),
                             
                             dbc.Row([
                                 dbc.Label([
                                     html.I(className="fas fa-lock me-2"),
                                     "Password"
-                                ], width=4, className="d-flex align-items-center text-white"),
+                                ], width=12, md=4, className="d-flex align-items-center text-white mb-2 mb-md-0"),
                                 dbc.Col([
                                     dbc.Input(
                                         type="password", 
@@ -98,8 +96,8 @@ layout = html.Div([
                                         placeholder="Enter password",
                                         className="form-control"
                                     ),
-                                ], width=8)
-                            ], className="mb-3"),
+                                ], width=12, md=8)
+                            ], className="mb-3 align-items-center"),
                             
                             dbc.Row([
                                 dbc.Col([
@@ -123,20 +121,26 @@ layout = html.Div([
                     'backdropFilter': 'blur(8px)',
                 }
                 ),
-            ], width={"size": 5, "offset": 3}),
-        ]),
-    ], fluid=True, className="py-5"),
-])
+            ], 
+            # Responsive column sizing - adapts to all screen sizes
+            xs=12, sm=10, md=8, lg=6, xl=5,
+            className="mx-auto"
+        ),
+    ], 
+    
+    className="py-5 d-flex align-items-center min-vh-100"
+    ),
+], style={'minHeight': '100vh'})])
 
 # Callback to handle database connection (redirect)
 @callback(
     [Output("connection-status", "children"),
      Output("db-connection-url", "pathname")],
     Input("connect-button", "n_clicks"),
-    State("host-input", "value"),
-    State("database-input", "value"),
-    State("username-input", "value"),
-    State("password-input", "value"),
+    [State("host-input", "value"),
+     State("database-input", "value"),
+     State("username-input", "value"),
+     State("password-input", "value")],
     prevent_initial_call=True
 )
 def connect_to_database(n_clicks, host, database, username, password):

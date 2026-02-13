@@ -129,7 +129,7 @@ layout = html.Div([
                         ], className="text-center")
                     ])
                 ], className="shadow-sm")
-            ], width=6, md=4),
+            ], width=6, md=3),
             
             dbc.Col([
                 dbc.Card([
@@ -140,31 +140,19 @@ layout = html.Div([
                         ], className="text-center")
                     ])
                 ], className="shadow-sm")
-            ], width=6, md=4),
+            ], width=6, md=3),
 
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
-                            html.H4("Commercial Stands", className="card-title text-center"),
-                            html.H2(id="commercial-stands", children="0 stands", className="text-center text-warning fw-bold"),
+                            html.H4("Reserved Stands", className="card-title text-center"),
+                            html.H2(id="reserved-stands", children="0 stands", className="text-center text-warning fw-bold"),
                         ], className="text-center")
                     ])
                 ], className="shadow-sm")
-            ], width=6, md=4, className="mb-2"),
+            ], width=6, md=3),
 
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Residential Stands", className="card-title text-center"),
-                            html.H2(id="residential-stands", children="0 stands", className="text-center text-info fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=4),
-            
-            
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
@@ -174,7 +162,29 @@ layout = html.Div([
                         ], className="text-center")
                     ])
                 ], className="shadow-sm")
-            ], width=6, md=4)
+            ], width=6, md=3),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Commercial Stands", className="card-title text-center"),
+                            html.H2(id="commercial-stands", children="0 stands", className="text-center text-info fw-bold"),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-sm")
+            ], width=6, md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Residential Stands", className="card-title text-center"),
+                            html.H2(id="residential-stands", children="0 stands", className="text-center text-purple fw-bold"),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-sm")
+            ], width=6, md=6)
         ], className="mb-4"),
         
         # Charts
@@ -301,6 +311,7 @@ def populate_days(selected_year, selected_month, selected_week):
     [Output("land-bank-connection-status", "children"),
      Output("total-stands", "children"),
      Output("available-stands", "children"),
+     Output("reserved-stands", "children"),
      Output("sold-stands", "children"),
      Output("commercial-stands", "children"),
      Output("residential-stands", "children"),
@@ -325,7 +336,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
         empty_fig = go.Figure()
         empty_fig.update_layout(title="No Data - Please Connect to Database")
         
-        return [not_connected_alert, "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", empty_fig, empty_fig]
+        return [not_connected_alert, "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", empty_fig, empty_fig]
     
     try:
         # creating date condition based on time level
@@ -368,29 +379,40 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
         total_stands = total_df.iloc[0]['total_stands'] if not total_df.empty and total_df.iloc[0]['total_stands'] else 0
         formatted_total_stands = f"{total_stands:,.0f} stands" if total_stands else "0 stands"
         
-        # Available Land stands
+        # Available Land stands (available = 1 AND to_sale = 1)
         available_stands_query = f"""
         SELECT COUNT(s.stand_number) AS available_stands 
         FROM Stands s
         INNER JOIN Projects p ON s.project_id = p.id
-        {where_clause} AND s.available = 1
+        {where_clause} AND s.available = 1 AND s.to_sale = 1
         """
         available_df = pd.read_sql(available_stands_query, engine)
         available_stands = available_df.iloc[0]['available_stands'] if not available_df.empty and available_df.iloc[0]['available_stands'] else 0
         formatted_available_stands = f"{available_stands:,.0f} stands" if available_stands else "0 stands"
         
-        #STANDS sold
+        # Reserved stands (available = 1 AND to_sale = 0)
+        reserved_stands_query = f"""
+        SELECT COUNT(s.stand_number) AS reserved_stands 
+        FROM Stands s
+        INNER JOIN Projects p ON s.project_id = p.id
+        {where_clause} AND s.available = 1 AND s.to_sale = 0
+        """
+        reserved_df = pd.read_sql(reserved_stands_query, engine)
+        reserved_stands = reserved_df.iloc[0]['reserved_stands'] if not reserved_df.empty and reserved_df.iloc[0]['reserved_stands'] else 0
+        formatted_reserved_stands = f"{reserved_stands:,.0f} stands" if reserved_stands else "0 stands"
+        
+        # STANDS sold (available = 0)
         sold_stands_query = f"""
         SELECT COUNT(s.stand_number) AS sold_stands 
         FROM Stands s
         INNER JOIN Projects p ON s.project_id = p.id
-        {where_clause} AND s.available = 0
+        {where_clause} AND s.available = 0 AND s.to_sale = 1
         """
         sold_df = pd.read_sql(sold_stands_query, engine)
         sold_stands = sold_df.iloc[0]['sold_stands'] if not sold_df.empty and sold_df.iloc[0]['sold_stands'] else 0
         formatted_sold_stands = f"{sold_stands:,.0f} stands" if sold_stands else "0 stands"
 
-        #commercial stands sold
+        # Commercial stands sold (property_description_id = 2)
         commercial_stands_query = f"""
         SELECT COUNT(s.stand_number) AS commercial_stands 
         FROM Stands s
@@ -401,7 +423,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
         commercial_stands = commercial_df.iloc[0]['commercial_stands'] if not commercial_df.empty and commercial_df.iloc[0]['commercial_stands'] else 0
         formatted_commercial_stands = f"{commercial_stands:,.0f} stands" if commercial_stands else "0 stands"
 
-        #residential stands sold
+        # Residential stands sold (property_description_id = 1)
         residential_stands_query = f"""
         SELECT COUNT(s.stand_number) AS residential_stands 
         FROM Stands s
@@ -412,27 +434,30 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
         residential_stands = residential_df.iloc[0]['residential_stands'] if not residential_df.empty and residential_df.iloc[0]['residential_stands'] else 0
         formatted_residential_stands = f"{residential_stands:,.0f} stands" if residential_stands else "0 stands"
 
-        # Land distribution by status
+        # Land distribution by status (including reserved stands)
         status_query = f"""
-        SELECT s.available, COUNT(s.stand_number) AS count 
+        SELECT 
+            CASE 
+                WHEN s.available = 1 AND s.to_sale = 1 THEN 'Available'
+                WHEN s.available = 1 AND s.to_sale = 0 THEN 'Reserved'
+                WHEN s.available = 0 THEN 'Sold'
+            END AS status,
+            COUNT(s.stand_number) AS count 
         FROM Stands s
         INNER JOIN Projects p ON s.project_id = p.id
         {where_clause} 
-        GROUP BY s.available
+        GROUP BY 
+            CASE 
+                WHEN s.available = 1 AND s.to_sale = 1 THEN 'Available'
+                WHEN s.available = 1 AND s.to_sale = 0 THEN 'Reserved'
+                WHEN s.available = 0 THEN 'Sold'
+            END
         """
         status_df = pd.read_sql(status_query, engine)
         
         if not status_df.empty:
-            # Create meaningful labels for availability status
-            status_labels = []
-            for _, row in status_df.iterrows():
-                if row['available'] == 1:
-                    status_labels.append("Available")
-                else:
-                    status_labels.append("Sold")
-            
             pie_fig = go.Figure(data=[go.Pie(
-                labels=status_labels, 
+                labels=status_df['status'], 
                 values=status_df['count'],
                 hole=0.6,
                 hovertemplate='<b>%{label}</b><br>' +
@@ -453,7 +478,8 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
             p.name AS project_name,
             p.id AS project_id,
             COUNT(s.stand_number) AS total_stands,
-            COUNT(CASE WHEN s.available = 1 THEN 1 END) AS available_stands,
+            COUNT(CASE WHEN s.available = 1 AND s.to_sale = 1 THEN 1 END) AS available_stands,
+            COUNT(CASE WHEN s.available = 1 AND s.to_sale = 0 THEN 1 END) AS reserved_stands,
             COUNT(CASE WHEN s.available = 0 THEN 1 END) AS sold_stands
         FROM Projects p
         INNER JOIN Stands s ON p.id = s.project_id
@@ -467,7 +493,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
             # combined labels with project name and ID
             project_labels = [f"{row['project_name']} (ID: {row['project_id']})" for _, row in project_df.iterrows()]
             
-            # bar chart showing available vs sold stands for all projects
+            # bar chart showing available vs reserved vs sold stands for all projects
             bar_fig = go.Figure()
             
             bar_fig.add_trace(go.Bar(
@@ -476,6 +502,15 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
                 y=project_df['available_stands'],
                 marker_color='lightgreen',
                 text=[f"{stands:,.0f}" for stands in project_df['available_stands']],
+                textposition='auto'
+            ))
+            
+            bar_fig.add_trace(go.Bar(
+                name='Reserved',
+                x=project_labels,
+                y=project_df['reserved_stands'],
+                marker_color='gold',
+                text=[f"{stands:,.0f}" for stands in project_df['reserved_stands']],
                 textposition='auto'
             ))
             
@@ -489,7 +524,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
             ))
             
             bar_fig.update_layout(
-                title=f"Project Comparison - Available vs Sold ({period_label})",
+                title=f"Project Comparison - Available vs Reserved vs Sold ({period_label})",
                 xaxis_title="Project",
                 yaxis_title="Number of Stands",
                 barmode='group',
@@ -506,7 +541,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
             f"Connected to database successfully! Showing data for {period_label}"
         ], color="success")
         
-        return [status, formatted_total_stands, formatted_available_stands, formatted_sold_stands, formatted_commercial_stands, formatted_residential_stands, pie_fig, bar_fig]
+        return [status, formatted_total_stands, formatted_available_stands, formatted_reserved_stands, formatted_sold_stands, formatted_commercial_stands, formatted_residential_stands, pie_fig, bar_fig]
         
     except Exception as e:
         error_alert = dbc.Alert([
@@ -517,7 +552,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
         empty_fig = go.Figure()
         empty_fig.update_layout(title="Error Loading Data")
         
-        return [error_alert, "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", empty_fig, empty_fig]
+        return [error_alert, "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", "0 stands", empty_fig, empty_fig]
     finally:
         if engine:
             engine.dispose()

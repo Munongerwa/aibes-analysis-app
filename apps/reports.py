@@ -21,17 +21,30 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import ssl
+import hashlib
 
 class ReportGenerator:
     def __init__(self, db_connection_string=None):
         self.db_connection_string = db_connection_string
+        self.user_id = self._generate_user_id(db_connection_string) if db_connection_string else "default_user"
         self.reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "generated_reports")
         self.ensure_reports_directory()
         
+    def _generate_user_id(self, db_connection_string):
+        """Generate a unique user ID based on database connection string"""
+        if db_connection_string:
+            # Create a hash of the connection string to identify the user/database
+            return hashlib.md5(db_connection_string.encode()).hexdigest()[:16]
+        return "default_user"
+    
     def ensure_reports_directory(self):
         """Create reports directory if it doesn't exist"""
         if not os.path.exists(self.reports_dir):
             os.makedirs(self.reports_dir)
+    
+    def get_user_reports_db_path(self):
+        """Get the path to the user-specific reports database"""
+        return os.path.join(self.reports_dir, f"reports_{self.user_id}.db")
     
     def get_company_info(self):
         """Get company information from settings"""
@@ -112,7 +125,8 @@ SELECT
     p.id AS project_id,
     COUNT(s.stand_number) AS stands_sold,
     SUM(s.sale_value) AS stands_value,
-    COUNT(CASE WHEN s.available = 1 THEN 1 END) AS stands_available
+    COUNT(CASE WHEN s.available = 1 AND s.to_sale = 1 THEN 1 END) AS stands_available,
+    COUNT(CASE WHEN s.available = 1 AND s.to_sale = 0 THEN 1 END) AS stands_reserved
 FROM Projects p
 INNER JOIN Stands s ON p.id = s.project_id
 WHERE {date_condition}
@@ -126,7 +140,9 @@ ORDER BY stands_value DESC
             SELECT 
                 COUNT(stand_number) AS total_stands_sold,
                 SUM(sale_value) AS total_stand_value,
-                COUNT(CASE WHEN available = 0 THEN stand_number END) AS total_stands_available
+                COUNT(CASE WHEN available = 0 THEN stand_number END) AS total_stands_sold_count,
+                COUNT(CASE WHEN available = 1 AND to_sale = 1 THEN stand_number END) AS total_stands_available,
+                COUNT(CASE WHEN available = 1 AND to_sale = 0 THEN stand_number END) AS total_stands_reserved
             FROM Stands
             WHERE {date_condition}
             """
@@ -150,31 +166,18 @@ ORDER BY stands_value DESC
             installment_df = pd.read_sql(total_installment_query, engine)
             total_installment = installment_df.iloc[0]['total_installment'] if not installment_df.empty and not pd.isna(installment_df.iloc[0]['total_installment']) else 0
             
-            # Get daily trend data
-            daily_trend_query = f"""
-            SELECT 
-                DATE(registration_date) as sale_date,
-                COUNT(stand_number) AS stands_sold
-            FROM Stands
-            WHERE {date_condition}
-            GROUP BY DATE(registration_date)
-            ORDER BY sale_date
-            LIMIT 31
-            """
-            daily_trend_df = pd.read_sql(daily_trend_query, engine)
-            
             engine.dispose()
             
             return {
                 'project_data': project_df,
                 'summary': {
                     'total_stand_value': summary_df.iloc[0]['total_stand_value'] if not summary_df.empty and not pd.isna(summary_df.iloc[0]['total_stand_value']) else 0,
-                    'total_stands_sold': summary_df.iloc[0]['total_stands_sold'] if not summary_df.empty and not pd.isna(summary_df.iloc[0]['total_stands_sold']) else 0,
+                    'total_stands_sold': summary_df.iloc[0]['total_stands_sold_count'] if not summary_df.empty and not pd.isna(summary_df.iloc[0]['total_stands_sold_count']) else 0,
                     'total_stands_available': summary_df.iloc[0]['total_stands_available'] if not summary_df.empty and not pd.isna(summary_df.iloc[0]['total_stands_available']) else 0,
+                    'total_stands_reserved': summary_df.iloc[0]['total_stands_reserved'] if not summary_df.empty and not pd.isna(summary_df.iloc[0]['total_stands_reserved']) else 0,
                     'total_deposit': total_deposit,
                     'total_installment': total_installment
                 },
-                'daily_trend': daily_trend_df,
                 'start_date': start_date,
                 'end_date': end_date,
                 'report_type': report_type
@@ -182,47 +185,6 @@ ORDER BY stands_value DESC
         except Exception as e:
             print(f"Error fetching custom data: {e}")
             return {}
-    
-    def create_daily_trend_chart(self, daily_trend_df, title="Daily Sales Trend"):
-        """Create a trend chart showing daily sales"""
-        try:
-            if daily_trend_df.empty:
-                return None
-            
-            # Create daily trend chart
-            fig, ax = plt.subplots(figsize=(10, 5))
-            
-            # Convert dates to readable format
-            daily_trend_df['sale_date'] = pd.to_datetime(daily_trend_df['sale_date'])
-            daily_trend_df['date_label'] = daily_trend_df['sale_date'].dt.strftime('%m/%d')
-            
-            ax.bar(daily_trend_df['date_label'], daily_trend_df['stands_sold'], 
-                   color="#850b5c", alpha=0.7, edgecolor="#0a7981")
-            
-            ax.set_title(title, fontsize=14, pad=20)
-            ax.set_xlabel('Date', fontsize=12)
-            ax.set_ylabel('Stands Sold', fontsize=12)
-            ax.grid(True, alpha=0.3, axis='y')
-            
-            # Add value labels on bars
-            for i, v in enumerate(daily_trend_df['stands_sold']):
-                ax.text(i, v + 0.5, str(v), ha='center', va='bottom', fontweight='bold')
-            
-            # Improve styling
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.set_ylim(0, daily_trend_df['stands_sold'].max() * 1.2)
-            
-            # Save to bytes
-            img_buffer = io.BytesIO()
-            plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-            img_buffer.seek(0)
-            plt.close(fig)
-            
-            return img_buffer
-        except Exception as e:
-            print(f"Error creating daily trend chart: {e}")
-            return None
     
     def create_project_comparison_chart(self, project_df, title="Project Comparison"):
         """Create a comparison chart showing stands sold vs sales value for each project"""
@@ -294,6 +256,57 @@ ORDER BY stands_value DESC
             return img_buffer
         except Exception as e:
             print(f"Error creating project comparison chart: {e}")
+            return None
+    
+    def create_stands_status_pie_chart(self, project_df, title="Stands Distribution by Status"):
+        """Create a pie chart showing distribution of stands by status"""
+        try:
+            if project_df.empty:
+                return None
+            
+            # Calculate totals
+            total_sold = project_df['stands_sold'].sum()
+            total_available = project_df['stands_available'].sum()
+            total_reserved = project_df['stands_reserved'].sum()
+            
+            # Only create chart if there's data
+            if total_sold + total_available + total_reserved == 0:
+                return None
+            
+            # Create pie chart
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Data for pie chart
+            statuses = ['Sold', 'Available', 'Reserved']
+            values = [total_sold, total_available, total_reserved]
+            colors = ['#850b5c', '#28a745', '#ffc107']
+            
+            # Filter out zero values
+            filtered_statuses = [status for status, value in zip(statuses, values) if value > 0]
+            filtered_values = [value for value in values if value > 0]
+            filtered_colors = [color for color, value in zip(colors, values) if value > 0]
+            
+            if not filtered_values:
+                return None
+            
+            wedges, texts, autotexts = ax.pie(filtered_values, labels=filtered_statuses, colors=filtered_colors, 
+                                             autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10})
+            
+            ax.set_title(title, fontsize=14, pad=20)
+            
+            # Add legend with actual values
+            legend_labels = [f'{status}: {value:,}' for status, value in zip(filtered_statuses, filtered_values)]
+            ax.legend(wedges, legend_labels, title="Stand Status", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+            
+            # Save to bytes
+            img_buffer = io.BytesIO()
+            plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
+            img_buffer.seek(0)
+            plt.close(fig)
+            
+            return img_buffer
+        except Exception as e:
+            print(f"Error creating stands status pie chart: {e}")
             return None
     
     def send_report_via_email(self, filepath, recipient_emails, subject=None, message=None):
@@ -378,7 +391,7 @@ ORDER BY stands_value DESC
             return False, f"Failed to send email: {str(e)}"
     
     def delete_report(self, filename):
-        """Delete a report file and its database record"""
+        """Delete a report file and its database record for the current user"""
         try:
             # Validation of the filename parameter
             if not filename:
@@ -398,15 +411,15 @@ ORDER BY stands_value DESC
                 # File doesn't exist but will still remove the record
                 file_deleted = True
             
-            # Deleting report from database
-            db_path = os.path.join(self.reports_dir, "reports.db")
+            # Deleting report from user-specific database
+            db_path = self.get_user_reports_db_path()
             record_deleted = False
             
             if os.path.exists(db_path):
                 try:
                     conn = sqlite3.connect(db_path)
                     cursor = conn.cursor()
-                    cursor.execute("DELETE FROM reports WHERE filename = ?", (filename,))
+                    cursor.execute("DELETE FROM reports WHERE filename = ? AND user_id = ?", (filename, self.user_id))
                     rows_affected = cursor.rowcount
                     conn.commit()
                     conn.close()
@@ -432,18 +445,30 @@ ORDER BY stands_value DESC
             return False, f"Failed to delete report: {str(e)}"
     
     def generate_pdf_report(self, start_date, end_date, report_type="custom"):
-        """Generate PDF report for custom date range with company branding"""
+        """Generate PDF report for custom date range with company branding - returns filepath or None"""
+        try:
+            filepath, error = self._generate_pdf_report_internal(start_date, end_date, report_type)
+            if error:
+                print(f"Report generation error: {error}")
+                return None
+            return filepath
+        except Exception as e:
+            print(f"Error in generate_pdf_report: {e}")
+            return None
+    
+    def _generate_pdf_report_internal(self, start_date, end_date, report_type="custom"):
+        """Internal method that generates PDF report and returns (filepath, error)"""
         try:
             # Get data
             data = self.get_custom_data(start_date, end_date, report_type)
             if not data:
-                return None
+                return None, "No data available for the selected period"
             
             # Get company info
             company_info = self.get_company_info()
             
-            # Generate filename
-            filename = f"report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}_{report_type}.pdf"
+            # Generate filename with user ID to ensure uniqueness
+            filename = f"report_{self.user_id}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}_{report_type}.pdf"
             filepath = os.path.join(self.reports_dir, filename)
             
             # PDF document
@@ -475,8 +500,8 @@ ORDER BY stands_value DESC
                     logo_img = Image(company_info['logo_path'], width=2*inch, height=1*inch)
                     story.append(logo_img)
                     story.append(Spacer(1, 10))
-                except:
-                    pass  
+                except Exception as e:
+                    print(f"Warning: Could not load company logo: {e}")
             
             story.append(Paragraph(company_info['company_name'], title_style))
             story.append(Paragraph("Sales Report", styles['Heading2']))
@@ -496,6 +521,7 @@ ORDER BY stands_value DESC
                 ['Total Stand Value', f"${summary_data['total_stand_value']:,.2f}"],
                 ['Total Stands Sold', str(summary_data['total_stands_sold'])],
                 ['Total Stands Available', str(summary_data['total_stands_available'])],
+                ['Total Stands Reserved', str(summary_data['total_stands_reserved'])],
                 ['Total Deposit', f"${summary_data['total_deposit']:,.2f}"],
                 ['Total Installment', f"${summary_data['total_installment']:,.2f}"]
             ]
@@ -523,14 +549,15 @@ ORDER BY stands_value DESC
                 story.append(Paragraph("Project Based Analysis", subtitle_style))
                 
                 # Prepare project table data - now using project_name instead of project_id
-                project_table_data = [['Project Name', 'Stands Sold', 'Value ($)', 'Stands Available']]
+                project_table_data = [['Project Name', 'Stands Sold', 'Value ($)', 'Stands Available', 'Stands Reserved']]
                 
                 for _, row in data['project_data'].iterrows():
                     project_table_data.append([
                         str(row['project_name']) if pd.notna(row['project_name']) else 'Unknown Project',
                         str(int(row['stands_sold'])) if pd.notna(row['stands_sold']) else '0',
                         f"${row['stands_value']:,.2f}" if pd.notna(row['stands_value']) else '$0.00',
-                        str(int(row['stands_available'])) if pd.notna(row['stands_available']) else '0'
+                        str(int(row['stands_available'])) if pd.notna(row['stands_available']) else '0',
+                        str(int(row['stands_reserved'])) if pd.notna(row['stands_reserved']) else '0'
                     ])
                 
                 # Add totals row
@@ -538,15 +565,17 @@ ORDER BY stands_value DESC
                     total_stands_sold = data['project_data']['stands_sold'].sum()
                     total_value = data['project_data']['stands_value'].sum()
                     total_available = data['project_data']['stands_available'].sum()
+                    total_reserved = data['project_data']['stands_reserved'].sum()
                     
                     project_table_data.append([
                         'TOTAL', 
                         str(int(total_stands_sold)),
                         f"${total_value:,.2f}",
-                        str(int(total_available))
+                        str(int(total_available)),
+                        str(int(total_reserved))
                     ])
                 
-                project_table = Table(project_table_data, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch])
+                project_table = Table(project_table_data, colWidths=[1.5*inch, 1.2*inch, 1.8*inch, 1.2*inch, 1.2*inch])
                 
                 # Define base table styles
                 project_table_styles = [
@@ -574,44 +603,52 @@ ORDER BY stands_value DESC
                 story.append(project_table)
                 story.append(Spacer(1, 30))
             
-            # Daily trend chart
-            chart_img = self.create_daily_trend_chart(data['daily_trend'], f"Daily Sales Trend ({report_type.title()})")
-            if chart_img:
-                story.append(Paragraph("Daily Trend Analysis", subtitle_style))
-                story.append(Spacer(1, 12))
-                
-                # chart image
-                img_buffer = io.BytesIO(chart_img.getvalue())
-                story.append(Image(img_buffer, width=7*inch, height=3.5*inch))
-                story.append(Spacer(1, 30))
-            
-            # Project comparison chart - NEW CHART ADDED
+            # Project comparison chart - MAIN CHART
             project_comparison_img = self.create_project_comparison_chart(data['project_data'], 
                                                                         f"Project Comparison - Stands Sold vs Sales Value ({report_type.title()})")
             if project_comparison_img:
-                story.append(Paragraph("Project Comparison Analysis", subtitle_style))
+                story.append(Paragraph("Project Sales Comparison", subtitle_style))
                 story.append(Spacer(1, 12))
                 
                 # chart image
-                img_buffer2 = io.BytesIO(project_comparison_img.getvalue())
+                img_buffer = io.BytesIO(project_comparison_img.getvalue())
+                story.append(Image(img_buffer, width=7*inch, height=4*inch))
+                story.append(Spacer(1, 30))
+            
+            # Stands status distribution chart
+            status_chart_img = self.create_stands_status_pie_chart(data['project_data'], 
+                                                                 f"Stands Distribution by Status ({report_type.title()})")
+            if status_chart_img:
+                story.append(Paragraph("Stands Status Distribution", subtitle_style))
+                story.append(Spacer(1, 12))
+                
+                # chart image
+                img_buffer2 = io.BytesIO(status_chart_img.getvalue())
                 story.append(Image(img_buffer2, width=7*inch, height=4*inch))
                 story.append(PageBreak())
             
             # Build PDF
-            doc.build(story)
+            try:
+                doc.build(story)
+            except Exception as e:
+                print(f"Error building PDF: {e}")
+                return None, f"Failed to build PDF: {str(e)}"
             
-            # Store report info in database
-            self.store_report_info(filename, start_date, end_date, report_type, summary_data)
+            # Store report info in user-specific database
+            try:
+                self.store_report_info(filename, start_date, end_date, report_type, summary_data)
+            except Exception as e:
+                print(f"Warning: Could not store report info in database: {e}")
             
-            return filepath
+            return filepath, None
         except Exception as e:
             print(f"Error generating PDF report: {e}")
-            return None
+            return None, f"Failed to generate report: {str(e)}"
     
     def store_report_info(self, filename, start_date, end_date, report_type, summary_data):
-        """Store report information in SQLite database"""
+        """Store report information in user-specific SQLite database"""
         try:
-            db_path = os.path.join(self.reports_dir, "reports.db")
+            db_path = self.get_user_reports_db_path()
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             
@@ -619,7 +656,8 @@ ORDER BY stands_value DESC
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS reports (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    filename TEXT UNIQUE,
+                    user_id TEXT,
+                    filename TEXT,
                     start_date DATE,
                     end_date DATE,
                     report_type TEXT,
@@ -627,32 +665,34 @@ ORDER BY stands_value DESC
                     total_stand_value REAL,
                     total_stands_sold INTEGER,
                     total_stands_available INTEGER,
+                    total_stands_reserved INTEGER,
                     total_deposit REAL,
                     total_installment REAL
                 )
             ''')
             
-            # Inserting the report information
+            # Inserting the report information with user_id
             cursor.execute('''
                 INSERT OR REPLACE INTO reports 
-                (filename, start_date, end_date, report_type, total_stand_value, total_stands_sold, total_stands_available, total_deposit, total_installment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, filename, start_date, end_date, report_type, total_stand_value, total_stands_sold, total_stands_available, total_stands_reserved, total_deposit, total_installment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                filename, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), report_type,
+                self.user_id, filename, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), report_type,
                 summary_data['total_stand_value'], summary_data['total_stands_sold'],
-                summary_data['total_stands_available'], summary_data['total_deposit'], 
-                summary_data['total_installment']
+                summary_data['total_stands_available'], summary_data['total_stands_reserved'],
+                summary_data['total_deposit'], summary_data['total_installment']
             ))
             
             conn.commit()
             conn.close()
         except Exception as e:
             print(f"Error storing report info: {e}")
+            raise e  # Re-raise to be handled by caller
     
     def get_generated_reports(self):
-        """Get list of generated reports"""
+        """Get list of generated reports for the current user"""
         try:
-            db_path = os.path.join(self.reports_dir, "reports.db")
+            db_path = self.get_user_reports_db_path()
             if not os.path.exists(db_path):
                 return []
                 
@@ -661,11 +701,12 @@ ORDER BY stands_value DESC
             
             cursor.execute('''
                 SELECT filename, start_date, end_date, report_type, generated_date, 
-                       total_stand_value, total_stands_sold, total_stands_available
+                       total_stand_value, total_stands_sold, total_stands_available, total_stands_reserved
                 FROM reports
+                WHERE user_id = ?
                 ORDER BY generated_date DESC
                 LIMIT 60
-            ''')
+            ''', (self.user_id,))
             
             reports = cursor.fetchall()
             conn.close()
@@ -678,7 +719,8 @@ ORDER BY stands_value DESC
                 'date': r[4],
                 'total_stand_value': r[5],
                 'total_stands_sold': r[6],
-                'total_stands_available': r[7]
+                'total_stands_available': r[7],
+                'total_stands_reserved': r[8]
             } for r in reports]
         except Exception as e:
             print(f"Error fetching reports: {e}")
@@ -688,7 +730,7 @@ ORDER BY stands_value DESC
 report_generator = None
 
 def initialize_report_generator(db_connection_string):
-    """Initialize the global report generator"""
+    """Initialize the global report generator with user isolation"""
     global report_generator
     report_generator = ReportGenerator(db_connection_string)
     return report_generator
