@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import plotly.graph_objs as go
 import datetime
+import calendar
 
 #get user-specific database engine
 def get_user_db_engine():
@@ -48,7 +49,41 @@ layout = html.Div([
                                     clearable=False,
                                     className="mb-3"
                                 )
-                            ], width=6),
+                            ], width=4),
+                            
+                            dbc.Col([
+                                dbc.Label("Select Month", className="mb-2"),
+                                dcc.Dropdown(
+                                    id="project-month-dropdown",
+                                    options=[
+                                        {'label': 'January', 'value': 1},
+                                        {'label': 'February', 'value': 2},
+                                        {'label': 'March', 'value': 3},
+                                        {'label': 'April', 'value': 4},
+                                        {'label': 'May', 'value': 5},
+                                        {'label': 'June', 'value': 6},
+                                        {'label': 'July', 'value': 7},
+                                        {'label': 'August', 'value': 8},
+                                        {'label': 'September', 'value': 9},
+                                        {'label': 'October', 'value': 10},
+                                        {'label': 'November', 'value': 11},
+                                        {'label': 'December', 'value': 12}
+                                    ],
+                                    value=datetime.datetime.now().month,
+                                    clearable=False,
+                                    className="mb-3"
+                                )
+                            ], width=4),
+                            
+                            dbc.Col([
+                                dbc.Label("Select Week", className="mb-2"),
+                                dcc.Dropdown(
+                                    id="project-week-dropdown",
+                                    options=[],
+                                    placeholder="Select week",
+                                    className="mb-3"
+                                )
+                            ], width=4),
                             
                             dbc.Col([
                                 dbc.Label("Select Project", className="mb-2"),
@@ -58,7 +93,7 @@ layout = html.Div([
                                     placeholder="Select a project",
                                     className="mb-3"
                                 )
-                            ], width=6)
+                            ], width=12)
                         ]),
                         
                         dbc.Button([
@@ -127,7 +162,7 @@ layout = html.Div([
                 dbc.Card([
                     dbc.CardHeader([
                         html.I(className="fas fa-chart-line me-2"),
-                        "Monthly Project Progress"
+                        "Weekly Project Progress"
                     ]),
                     dbc.CardBody([
                         dcc.Graph(id="project-progress-line-chart", style={"height": "400px"})
@@ -150,23 +185,67 @@ layout = html.Div([
     ], className="mt-4", fluid=True)
 ])
 
+# Callback to populate week dropdown (4 weeks per month)
+@callback(
+    Output("project-week-dropdown", "options"),
+    [Input("project-year-dropdown", "value"),
+     Input("project-month-dropdown", "value")]
+)
+def populate_weeks(selected_year, selected_month):
+    try:
+        # Create 4 weeks per month
+        weeks = []
+        days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+        days_per_week = max(1, days_in_month // 4)  # Ensure at least 1 day per week
+        
+        for week_num in range(1, 5):  # Always 4 weeks
+            start_day = (week_num - 1) * days_per_week + 1
+            end_day = min(week_num * days_per_week, days_in_month)
+            weeks.append({
+                'label': f'Week {week_num} ({start_day}-{end_day})',
+                'value': week_num
+            })
+        
+        return weeks
+    except Exception as e:
+        print(f"Error populating weeks: {e}")
+        return []
+
 # loading project options, callback
 @callback(
     Output("project-project-dropdown", "options"),
-    Input("project-year-dropdown", "value")
+    [Input("project-year-dropdown", "value"),
+     Input("project-month-dropdown", "value"),
+     Input("project-week-dropdown", "value")]
 )
-def load_project_options(selected_year):
+def load_project_options(selected_year, selected_month, selected_week):
     engine = get_user_db_engine()
     if not engine:
         return []
     
     try:
+        # Build WHERE clause for project options based on time filters
+        where_conditions = [f"YEAR(s.registration_date) = {selected_year}"]
+        
+        if selected_month:
+            where_conditions.append(f"MONTH(s.registration_date) = {selected_month}")
+            
+        if selected_week and selected_month:
+            # Calculate week boundaries (4 weeks per month)
+            days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+            days_per_week = max(1, days_in_month // 4)
+            start_day = (selected_week - 1) * days_per_week + 1
+            end_day = min(selected_week * days_per_week, days_in_month)
+            where_conditions.append(f"DAY(s.registration_date) BETWEEN {start_day} AND {end_day}")
+        
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+        
         # Get projects with their names
         query = f"""
         SELECT DISTINCT p.id AS project_id, p.name AS project_name
         FROM Projects p
         INNER JOIN Stands s ON p.id = s.project_id
-        WHERE YEAR(s.registration_date) = {selected_year}
+        {where_clause}
         ORDER BY p.id
         """
         df = pd.read_sql(query, engine)
@@ -190,9 +269,11 @@ def load_project_options(selected_year):
      Output("top-projects-bar-chart", "figure")],
     [Input("refresh-project-button", "n_clicks")],
     [Input("project-year-dropdown", "value"),
+     Input("project-month-dropdown", "value"),
+     Input("project-week-dropdown", "value"),
      Input("project-project-dropdown", "value")]
 )
-def update_project_analysis(n_clicks, selected_year, selected_project):
+def update_project_analysis(n_clicks, selected_year, selected_month, selected_week, selected_project):
     engine = get_user_db_engine()
     
     if not engine:
@@ -207,10 +288,24 @@ def update_project_analysis(n_clicks, selected_year, selected_project):
         return [not_connected_alert, "0", "0", "$0", "0%", empty_fig, empty_fig]
     
     try:
-        # filters query
-        where_clause = f"WHERE YEAR(s.registration_date) = {selected_year}"
+        # Build WHERE clause based on all filters
+        where_conditions = [f"YEAR(s.registration_date) = {selected_year}"]
+        
+        if selected_month:
+            where_conditions.append(f"MONTH(s.registration_date) = {selected_month}")
+            
+        if selected_week and selected_month:
+            # Calculate week boundaries (4 weeks per month)
+            days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+            days_per_week = max(1, days_in_month // 4)
+            start_day = (selected_week - 1) * days_per_week + 1
+            end_day = min(selected_week * days_per_week, days_in_month)
+            where_conditions.append(f"DAY(s.registration_date) BETWEEN {start_day} AND {end_day}")
+        
         if selected_project:
-            where_clause += f" AND s.project_id = {selected_project}"
+            where_conditions.append(f"s.project_id = {selected_project}")
+        
+        where_clause = "WHERE " + " AND ".join(where_conditions)
         
         # Total Projects
         total_projects_query = f"""
@@ -259,57 +354,102 @@ def update_project_analysis(n_clicks, selected_year, selected_project):
             completion_rate = 0
         formatted_completion = f"{completion_rate:.1f}%" if completion_rate else "0%"
         
-        #Monthly Project Progress 
+        # Weekly Project Progress (based on 4-week system)
         progress_query = f"""
         SELECT 
-            MONTH(s.registration_date) AS month,
+            DAY(s.registration_date) AS day,
             COUNT(s.stand_number) AS stands_sold
         FROM Stands s
         INNER JOIN Projects p ON s.project_id = p.id
         {where_clause}
-        GROUP BY MONTH(s.registration_date)
-        ORDER BY month
+        GROUP BY DAY(s.registration_date)
+        ORDER BY day
         """
         progress_df = pd.read_sql(progress_query, engine)
         
-        month_order = ["January", "February", "March", "April", "May", "June",
-                       "July", "August", "September", "October", "November", "December"]
-        
-        if not progress_df.empty:
-            progress_df['month'] = progress_df['month'].astype(int)
-            progress_df['month_name'] = progress_df['month'].apply(lambda x: pd.to_datetime(f"2023-{x}-01").strftime('%B'))
+        if selected_month and selected_week and not progress_df.empty:
+            # Create week labels for the selected week
+            days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+            days_per_week = max(1, days_in_month // 4)
+            start_day = (selected_week - 1) * days_per_week + 1
+            end_day = min(selected_week * days_per_week, days_in_month)
             
-            missing_months = []
-            for month in month_order:
-                if month not in progress_df['month_name'].values:
-                    missing_months.append({
-                        'month': month_order.index(month) + 1,
-                        'stands_sold': 0,
-                        'month_name': month
+            # Group data by week
+            week_data = []
+            current_week_stands = 0
+            
+            for day in range(start_day, end_day + 1):
+                day_data = progress_df[progress_df['day'] == day]
+                if not day_data.empty:
+                    current_week_stands += day_data.iloc[0]['stands_sold']
+            
+            week_data.append({
+                'week': f'Week {selected_week}',
+                'stands_sold': current_week_stands
+            })
+            
+            # If we have data for the week, create the figure
+            if week_data:
+                week_df = pd.DataFrame(week_data)
+                line_fig = go.Figure()
+                line_fig.add_trace(go.Scatter(
+                    x=week_df['week'],
+                    y=week_df['stands_sold'],
+                    mode='lines+markers',
+                    name='Stands Sold',
+                    line=dict(color='#2c4bbc', width=2),
+                    marker=dict(size=8)
+                ))
+                line_fig.update_layout(
+                    title='Weekly Project Progress',
+                    xaxis_title='Week',
+                    yaxis_title='Stands Sold',
+                    template='plotly_white'
+                )
+            else:
+                line_fig = go.Figure()
+                line_fig.update_layout(title="No Data Available")
+        elif not progress_df.empty:
+            # Monthly progress chart (when no specific week is selected)
+            # Group by week within the month (4 weeks)
+            if selected_month:
+                days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+                days_per_week = max(1, days_in_month // 4)
+                
+                weekly_data = []
+                for week_num in range(1, 5):
+                    start_day = (week_num - 1) * days_per_week + 1
+                    end_day = min(week_num * days_per_week, days_in_month)
+                    
+                    week_stands = progress_df[
+                        (progress_df['day'] >= start_day) & 
+                        (progress_df['day'] <= end_day)
+                    ]['stands_sold'].sum()
+                    
+                    weekly_data.append({
+                        'week': f'Week {week_num}',
+                        'stands_sold': week_stands
                     })
-            
-            if missing_months:
-                missing_df = pd.DataFrame(missing_months)
-                progress_df = pd.concat([progress_df, missing_df], ignore_index=True)
-            
-            progress_df['month_name'] = pd.Categorical(progress_df['month_name'], categories=month_order, ordered=True)
-            progress_df.sort_values('month_name', inplace=True)
-            
-            line_fig = go.Figure()
-            line_fig.add_trace(go.Scatter(
-                x=progress_df['month_name'],
-                y=progress_df['stands_sold'],
-                mode='lines+markers',
-                name='Stands Sold',
-                line=dict(color='#2c4bbc', width=2),
-                marker=dict(size=8)
-            ))
-            line_fig.update_layout(
-                title='Monthly Project Progress',
-                xaxis_title='Month',
-                yaxis_title='Stands Sold',
-                template='plotly_white'
-            )
+                
+                week_df = pd.DataFrame(weekly_data)
+                line_fig = go.Figure()
+                line_fig.add_trace(go.Scatter(
+                    x=week_df['week'],
+                    y=week_df['stands_sold'],
+                    mode='lines+markers',
+                    name='Stands Sold',
+                    line=dict(color='#2c4bbc', width=2),
+                    marker=dict(size=8)
+                ))
+                line_fig.update_layout(
+                    title='Weekly Project Progress',
+                    xaxis_title='Week',
+                    yaxis_title='Stands Sold',
+                    template='plotly_white'
+                )
+            else:
+                line_fig = go.Figure()
+                line_fig.update_layout(title="No Data Available")
         else:
             line_fig = go.Figure()
             line_fig.update_layout(title="No Data Available")
@@ -357,9 +497,19 @@ def update_project_analysis(n_clicks, selected_year, selected_project):
             bar_fig = go.Figure()
             bar_fig.update_layout(title="No Data Available")
         
+        # Status message
+        filter_parts = [f"Year: {selected_year}"]
+        if selected_month:
+            month_name = calendar.month_name[selected_month]
+            filter_parts.append(f"Month: {month_name}")
+        if selected_week and selected_month:
+            filter_parts.append(f"Week: {selected_week}")
+        if selected_project:
+            filter_parts.append(f"Project: {selected_project}")
+        
         status = dbc.Alert([
             html.I(className="fas fa-check-circle me-2"),
-            f"Connected to database successfully! Showing data for Year: {selected_year}" + (f", Project: {selected_project}" if selected_project else "")
+            f"Connected to database successfully! Showing data for {', '.join(filter_parts)}"
         ], color="success")
         
         return [status, str(total_projects), str(total_stands), formatted_avg_sale, formatted_completion, line_fig, bar_fig]

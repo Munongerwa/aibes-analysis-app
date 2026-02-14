@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objs as go
 import datetime
 import dash
+import calendar
 
 # Function to get user-specific database engine
 def get_user_db_engine():
@@ -264,7 +265,7 @@ def get_active_time_filter(daily_active, weekly_active, monthly_active, yearly_a
 # Hidden div to store active time filter
 layout.children.insert(1, html.Div(id="sales-active-time-filter", style={"display": "none"}))
 
-# Callback to populate week dropdown based on year and month
+# Callback to populate week dropdown based on year and month (4 weeks per month)
 @callback(
     [Output("sales-week-dropdown", "options"),
      Output("sales-day-dropdown", "options")],
@@ -273,21 +274,20 @@ layout.children.insert(1, html.Div(id="sales-active-time-filter", style={"displa
 )
 def populate_weeks_and_days(selected_year, selected_month):
     try:
-        # Get weeks in the selected month
-        import calendar
+        # Create 4 weeks per month
         weeks = []
-        cal = calendar.monthcalendar(selected_year, selected_month)
+        days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+        days_per_week = max(1, days_in_month // 4)  # Ensure at least 1 day per week
         
-        for week_num, week in enumerate(cal, 1):
-            # Find the Monday of the week (or first day if no Monday)
-            monday = next((day for day in week if day != 0), 1)
+        for week_num in range(1, 5):  # Always 4 weeks
+            start_day = (week_num - 1) * days_per_week + 1
+            end_day = min(week_num * days_per_week, days_in_month)
             weeks.append({
-                'label': f'Week {week_num} ({monday}-{min(monday+6, calendar.monthrange(selected_year, selected_month)[1])})',
+                'label': f'Week {week_num} ({start_day}-{end_day})',
                 'value': week_num
             })
         
         # Get days in the selected month
-        days_in_month = calendar.monthrange(selected_year, selected_month)[1]
         days = [{'label': str(day), 'value': day} for day in range(1, days_in_month + 1)]
         
         return weeks, days
@@ -333,12 +333,12 @@ def update_sales_analysis(n_clicks, active_time_filter, selected_year, selected_
             date_condition = f"DATE(ca.registration_date) = '{selected_year}-{selected_month:02d}-{selected_day:02d}'"
         elif active_time_filter == "weekly":
             if selected_week:
-                # Use a simpler approach for weekly filtering
-                start_date = datetime.date(selected_year, selected_month, 1)
-                # Calculate approximate week start and end dates
-                week_start = start_date + datetime.timedelta(weeks=selected_week-1)
-                week_end = week_start + datetime.timedelta(days=6)
-                date_condition = f"DATE(ca.registration_date) BETWEEN '{week_start}' AND '{week_end}'"
+                # Calculate week boundaries (4 weeks per month)
+                days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+                days_per_week = max(1, days_in_month // 4)
+                start_day = (selected_week - 1) * days_per_week + 1
+                end_day = min(selected_week * days_per_week, days_in_month)
+                date_condition = f"DAY(ca.registration_date) BETWEEN {start_day} AND {end_day} AND MONTH(ca.registration_date) = {selected_month} AND YEAR(ca.registration_date) = {selected_year}"
             else:
                 date_condition = f"YEAR(ca.registration_date) = {selected_year} AND MONTH(ca.registration_date) = {selected_month}"
         elif active_time_filter == "monthly":
@@ -346,7 +346,8 @@ def update_sales_analysis(n_clicks, active_time_filter, selected_year, selected_
         else:  # yearly
             date_condition = f"YEAR(ca.registration_date) = {selected_year}"
         
-        where_clause = f"WHERE {date_condition}"
+        # Add condition to exclude deleted records
+        where_clause = f"WHERE {date_condition} AND ca.deleted = 0"
         
         # TOTAL SALES
         total_sales_query = f"""
@@ -385,7 +386,7 @@ def update_sales_analysis(n_clicks, active_time_filter, selected_year, selected_
             SUM(ca.stand_value) AS total_sales
         FROM customer_accounts ca
         INNER JOIN Projects p ON ca.project_id = p.id
-        {where_clause}
+        {where_clause} 
         GROUP BY p.id, p.name
         ORDER BY total_sales DESC
         """
