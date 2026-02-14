@@ -10,7 +10,12 @@ import sqlite3
 from sqlalchemy import create_engine
 from apps import home, dashboard, db_connection, land_bank_analysis, project_analysis, sales_analysis, reports_view, settings
 
-# Initializing the dash app with suppress_callback_exceptions=True
+# Add these imports at the top
+import os
+import pymysql
+pymysql.install_as_MySQLdb()
+
+# Update the server configuration for production
 app = dash.Dash(__name__, 
                 external_stylesheets=[
                     dbc.themes.BOOTSTRAP,
@@ -19,309 +24,19 @@ app = dash.Dash(__name__,
                 suppress_callback_exceptions=True,
                 server=True)
 
-# Make the server object available for gunicorn
-server = app.server
+# Secure secret key
+app.server.secret_key = os.environ.get('SECRET_KEY', 'your-default-secret-key-change-in-production')
 
-# Server-side session support
-app.server.secret_key = 'bati-aibes'  
+# Serve static files with better caching
+@app.server.route('/assets/<path:filename>')
+def serve_assets(filename):
+    assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+    if not os.path.exists(assets_dir):
+        os.makedirs(assets_dir)
+    return send_from_directory(assets_dir, filename, 
+                             cache_timeout=0 if app.config.get('DEBUG', False) else 31536000)
 
-# Serve generated reports 
-@app.server.route('/generated_reports/<path:filename>')
-def serve_report(filename):
-    reports_dir = os.path.join(os.path.dirname(__file__), "generated_reports")
-    if not os.path.exists(reports_dir):
-        os.makedirs(reports_dir)
-    return send_from_directory(reports_dir, filename)
-
-@app.server.route('/serve-logo/<path:filename>')
-def serve_logo(filename):
-    logos_dir = os.path.join(os.path.dirname(__file__), "logos")
-    if not os.path.exists(logos_dir):
-        os.makedirs(logos_dir)
-    return send_from_directory(logos_dir, filename)
-
-# Initializing the database tables function
-def initialize_database_tables():
-    """Initialize all required database tables"""
-    try:
-        settings_db_path = os.path.join(os.path.dirname(__file__), "settings.db")
-        conn = sqlite3.connect(settings_db_path)
-        cursor = conn.cursor()
-        
-        #company settings table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS company_settings (
-                id INTEGER PRIMARY KEY,
-                company_name TEXT,
-                logo_path TEXT,
-                logo_data BLOB,
-                updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        #email settings table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS email_settings (
-                id INTEGER PRIMARY KEY,
-                smtp_server TEXT,
-                smtp_port INTEGER,
-                email_username TEXT,
-                email_password TEXT,
-                sender_email TEXT,
-                sender_name TEXT,
-                updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Insert default company settings if none exist
-        cursor.execute("SELECT COUNT(*) FROM company_settings")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute('''
-                INSERT INTO company_settings (id, company_name) 
-                VALUES (1, 'AIBES Real Estate')
-            ''')
-        
-        # Insert default email settings if none exist
-        cursor.execute("SELECT COUNT(*) FROM email_settings")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute('''
-                INSERT INTO email_settings (id, smtp_server, smtp_port) 
-                VALUES (1, 'smtp.gmail.com', 587)
-            ''')
-        
-        conn.commit()
-        conn.close()
-        print("Database tables initialized successfully")
-    except Exception as e:
-        print(f"Error initializing database tables: {e}")
-
-# Logout confirmation modal
-logout_modal = dbc.Modal([
-    dbc.ModalHeader(dbc.ModalTitle([
-        html.I(className="fas fa-sign-out-alt me-2"),
-        "Confirm Logout"
-    ])),
-    dbc.ModalBody([
-        html.P("Are you sure you want to logout? This will disconnect you from the database."),
-        html.Small("You can reconnect later by going to the Database Connection page.", className="text-muted")
-    ]),
-    dbc.ModalFooter([
-        dbc.Button([
-            html.I(className="fas fa-check me-2"),
-            "Yes, Logout"
-        ], id="confirm-logout-btn", color="danger"),
-        dbc.Button([
-            html.I(className="fas fa-times me-2"),
-            "Cancel"
-        ], id="cancel-logout-btn", color="secondary"),
-    ]),
-], id="logout-modal", centered=True)
-
-# Login modal
-login_modal = dbc.Modal([
-    dbc.ModalHeader(dbc.ModalTitle([
-        html.I(className="fas fa-sign-in-alt me-2"),
-        "Login Required"
-    ])),
-    dbc.ModalBody([
-        html.P("Please connect to a database to access this feature."),
-        html.Div(id="login-error-message")
-    ]),
-    dbc.ModalFooter([
-        dbc.Button([
-            html.I(className="fas fa-database me-2"),
-            "Connect to Database"
-        ], href="/apps/db_connection", color="primary"),
-        dbc.Button([
-            html.I(className="fas fa-times me-2"),
-            "Cancel"
-        ], id="cancel-login-btn", color="secondary"),
-    ]),
-], id="login-modal", centered=True)
-
-# Modernized Navbar with Gradient
-navbar = dbc.Navbar(
-    dbc.Container([
-        # Brand Section
-        html.A(
-            dbc.Row([
-                html.Img(src="/assets/aibes.png", height="40px"),
-            ],
-            align="center",
-            className="g-0"
-            ),
-            href="/",
-            style={"textDecoration": "none"},
-        ),
-
-        # Desktop Navigation
-        dbc.Nav([
-            dbc.NavItem(dbc.NavLink("Home", href="/", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact", className="mx-2")),
-            
-            dbc.DropdownMenu([
-                dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
-                dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
-                dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
-            ], 
-            nav=True, 
-            in_navbar=True, 
-            label="Analysis",
-            className="mx-2"),
-            
-            dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact", className="mx-2")),
-        ], 
-        className="ms-auto d-none d-lg-flex",
-        navbar=True,
-        ),
-
-        # Connection Status and Authentication Buttons
-        html.Div([
-            html.Div(id="navbar-connection-status", className="d-flex align-items-center me-3"),
-            # Always present login and logout buttons (visibility controlled by CSS)
-            dbc.Button([
-                html.I(className="fas fa-sign-in-alt me-1"),
-                "Login"
-            ], id="login-btn", color="success", size="sm", className="btn-sm me-2", href="/apps/db_connection"),
-            dbc.Button([
-                html.I(className="fas fa-sign-out-alt me-1"),
-                "Logout"
-            ], id="logout-btn", color="danger", size="sm", className="btn-sm"),
-        ], className="d-flex align-items-center"),
-        
-        # Mobile Toggler
-        dbc.NavbarToggler(id="navbar-toggler", className="d-lg-none ms-2"),
-    ], fluid=True),
-    color="dark",
-    dark=True,
-    sticky="top",
-    className="shadow-sm"
-)
-
-# Mobile Collapsible Menu
-mobile_collapse = dbc.Collapse([
-    dbc.Nav([
-        dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
-        dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact")),
-        dbc.DropdownMenu([
-            dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
-            dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
-            dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
-        ], nav=True, in_navbar=True, label="Analysis"),
-        dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact")),
-        dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact")),
-        dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact")),
-    ], 
-    vertical=True,
-    pills=True,
-    className="px-3 py-2 bg-dark"
-    ),
-], id="navbar-collapse-mobile", navbar=True)
-
-app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    # Multi-user session management
-    dcc.Store(id='session-id'), 
-    # Logout confirmation modal
-    logout_modal,
-    # Login modal
-    login_modal,
-    # Modernized navbar
-    navbar,
-    # Mobile menu
-    mobile_collapse,
-    # Page content
-    html.Div(id='page-content', children=[], className="pt-4"),
-])
-
-# Session initialization callback
-@app.callback(Output('session-id', 'data'),
-              Input('url', 'pathname'))
-def initialize_session(pathname):
-    # Initializing session for each user
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
-        session['db_connection_string'] = None
-    return session['user_id']
-
-# Callback for navbar toggle
-@app.callback(
-    Output("navbar-collapse-mobile", "is_open"),
-    [Input("navbar-toggler", "n_clicks")],
-    [State("navbar-collapse-mobile", "is_open")],
-    prevent_initial_call=False
-)
-def toggle_navbar_collapse(n_clicks, is_open):
-    if n_clicks:
-        return not is_open
-    return is_open
-
-# Combined modal callback for both login and logout modals
-@app.callback(
-    [Output("logout-modal", "is_open"),
-     Output("login-modal", "is_open")],
-    [Input("logout-btn", "n_clicks"),
-     Input("cancel-logout-btn", "n_clicks"),
-     Input("cancel-login-btn", "n_clicks"),
-     Input("url", "pathname")],
-    prevent_initial_call=False
-)
-def handle_modals(logout_clicks, cancel_logout_clicks, cancel_login_clicks, pathname):
-    ctx = dash.callback_context
-    
-    # Default state - both modals closed
-    logout_modal_open = False
-    login_modal_open = False
-    
-    if ctx.triggered:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
-        # Handle logout modal triggers
-        if button_id == "logout-btn":
-            logout_modal_open = True
-        elif button_id == "cancel-logout-btn":
-            logout_modal_open = False
-            
-        # Handle login modal triggers
-        elif button_id == "cancel-login-btn":
-            login_modal_open = False
-            
-        # Handle protected route access
-        protected_pages = [
-            '/apps/dashboard', 
-            '/apps/settings', 
-            '/apps/land_bank_analysis', 
-            '/apps/project_analysis', 
-            '/apps/sales_analysis', 
-            '/apps/reports_view'
-        ]
-        
-        if button_id == "url.pathname" and pathname in protected_pages:
-            if not get_user_db_connection():
-                login_modal_open = True
-    
-    return [logout_modal_open, login_modal_open]
-
-# Auth buttons visibility callback
-@app.callback(
-    [Output("login-btn", "style"),
-     Output("logout-btn", "style")],
-    [Input("url", "pathname")],
-    prevent_initial_call=False
-)
-def update_auth_button_visibility(pathname):
-    # Check if user is connected
-    is_connected = 'db_connection_string' in session and session['db_connection_string']
-    
-    if is_connected:
-        # Hide login button, show logout button
-        return [{"display": "none"}, {"display": "block"}]
-    else:
-        # Show login button, hide logout button
-        return [{"display": "block"}, {"display": "none"}]
-
+# Update the display_page callback to use the improved connection check
 @app.callback(
     [Output('page-content', 'children'),
      Output('navbar-connection-status', 'children')],
@@ -334,10 +49,9 @@ def display_page(pathname, logout_clicks):
     
     # Handle logout
     if ctx.triggered and ctx.triggered[0]['prop_id'] == 'confirm-logout-btn.n_clicks':
-        # Clearing user session
         session.pop('db_connection_string', None)
         session.pop('user_id', None)
-        # logout success page
+        
         logout_success_page = html.Div([
             dbc.Container([
                 dbc.Alert([
@@ -360,12 +74,10 @@ def display_page(pathname, logout_clicks):
                 ], className="justify-content-center mt-3")
             ], className="text-center")
         ])
-        return [logout_success_page, get_connection_status_component()] 
-    # Connection status for navbar
-    connection_status = get_connection_status_component()
-    # Handling logout page directly
+        return [logout_success_page, get_connection_status_component()]
+    
+    # Handle direct logout route
     if pathname == '/apps/logout':
-        # Clearing user session
         session.pop('db_connection_string', None)
         session.pop('user_id', None)
         return [html.Div([
@@ -379,9 +91,9 @@ def display_page(pathname, logout_clicks):
                     "Login Again"
                 ], href="/apps/db_connection", color="primary", className="mt-3")
             ], className="text-center")
-        ]), connection_status]
+        ]), get_connection_status_component()]
     
-    # Protected pages 
+    # Protected pages check
     protected_pages = [
         '/apps/dashboard', 
         '/apps/settings', 
@@ -392,8 +104,9 @@ def display_page(pathname, logout_clicks):
     ]
     
     if pathname in protected_pages:
-        if not get_user_db_connection():
-            # Protected pages error
+        # Use the improved connection check
+        engine = get_user_db_connection()
+        if not engine:
             error_page = html.Div([
                 dbc.Container([
                     dbc.Alert([
@@ -406,37 +119,46 @@ def display_page(pathname, logout_clicks):
                     ], href="/apps/db_connection", color="primary", className="mt-3")
                 ], className="text-center")
             ])
-            return [error_page, connection_status]
+            return [error_page, get_connection_status_component()]
     
-    # Checking whether user is already connected
+    # Already connected check for db_connection page
     if pathname == '/apps/db_connection':
-        if get_user_db_connection():
-            # Already connected message
-            already_connected_page = html.Div([
-                dbc.Container([
-                    dbc.Alert([
-                        html.I(className="fas fa-check-circle me-2"),
-                        "You are already connected to the database!"
-                    ], color="success", className="mt-5 text-center"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Button([
-                                html.I(className="fas fa-chart-line me-2"),
-                                "Go to Dashboard"
-                            ], href="/apps/dashboard", color="primary", className="me-2")
-                        ], width="auto"),
-                        dbc.Col([
-                            dbc.Button([
-                                html.I(className="fas fa-home me-2"),
-                                "Go to Home"
-                            ], href="/", color="secondary")
-                        ], width="auto")
-                    ], className="justify-content-center mt-3")
-                ], className="text-center")
-            ])
-            return [already_connected_page, connection_status]
-        
+        engine = get_user_db_connection()
+        if engine:
+            try:
+                with engine.connect() as connection:
+                    result = connection.execute("SELECT 1")
+                    result.fetchone()
+                already_connected_page = html.Div([
+                    dbc.Container([
+                        dbc.Alert([
+                            html.I(className="fas fa-check-circle me-2"),
+                            "You are already connected to the database!"
+                        ], color="success", className="mt-5 text-center"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button([
+                                    html.I(className="fas fa-chart-line me-2"),
+                                    "Go to Dashboard"
+                                ], href="/apps/dashboard", color="primary", className="me-2")
+                            ], width="auto"),
+                            dbc.Col([
+                                dbc.Button([
+                                    html.I(className="fas fa-home me-2"),
+                                    "Go to Home"
+                                ], href="/", color="secondary")
+                            ], width="auto")
+                        ], className="justify-content-center mt-3")
+                    ], className="text-center")
+                ])
+                return [already_connected_page, get_connection_status_component()]
+            except:
+                # Connection is broken, allow reconnection
+                pass
+    
     # Page routing
+    connection_status = get_connection_status_component()
+    
     if pathname == '/':
         return [home.layout, connection_status]
     elif pathname == '/apps/db_connection':
@@ -461,37 +183,53 @@ def display_page(pathname, logout_clicks):
         ], className="text-center mt-5")
         return [not_found, connection_status]
 
-# Function to get user-specific database connection
+# Improved database connection function
 def get_user_db_connection():
     if 'db_connection_string' in session and session['db_connection_string']:
         try:
-            engine = create_engine(session['db_connection_string'])
+            engine = create_engine(
+                session['db_connection_string'],
+                pool_timeout=30,
+                pool_recycle=3600,
+                pool_pre_ping=True,
+                echo=False
+            )
             return engine
         except Exception as e:
             print(f"Database connection error: {e}")
+            session.pop('db_connection_string', None)  # Remove invalid connection
             return None
     return None
 
-# Function to get connection status component for navbar
+# Enhanced connection status component
 def get_connection_status_component():
     if 'db_connection_string' in session and session['db_connection_string']:
         try:
-            engine = create_engine(session['db_connection_string'])
-            connection = engine.connect()
-            # Get database name 
+            engine = create_engine(
+                session['db_connection_string'],
+                pool_timeout=10,
+                pool_pre_ping=True
+            )
+            
+            with engine.connect() as connection:
+                result = connection.execute("SELECT 1")
+                result.fetchone()
+            
+            # Extract database info
             try:
                 from sqlalchemy.engine.url import make_url
                 url = make_url(session['db_connection_string'])
                 db_label = url.database or url.host
+                host_info = url.host
             except:
-                db_label = session['db_connection_string'].split('/')[-1]
-            connection.close()
+                db_label = "Connected DB"
+                host_info = "Unknown"
             
             return html.Div([
                 html.Span([
                     html.I(className="fas fa-check-circle text-success me-1"),
                     f"Connected: {db_label}"
-                ], className="text-success small")
+                ], className="text-success small", title=f"Connected to {host_info}")
             ], className="d-flex align-items-center")
         except Exception as e:
             print(f"Connection status check error: {e}")
@@ -499,7 +237,7 @@ def get_connection_status_component():
                 html.Span([
                     html.I(className="fas fa-exclamation-triangle text-warning me-1"),
                     "Connection Lost"
-                ], className="text-warning small")
+                ], className="text-warning small", title="Click to reconnect")
             ], className="d-flex align-items-center")
     else:
         return html.Div([
@@ -509,13 +247,11 @@ def get_connection_status_component():
             ], className="text-danger small")
         ], className="d-flex align-items-center")
 
-# Initialize database tables when the app starts
-initialize_database_tables()
-
 if __name__ == '__main__':
-    # Get port from environment variable (for Render) or default to 8000
     port = int(os.environ.get('PORT', 8000))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
-    # Run the app
-    #app.run(host='0.0.0.0', port=port, debug=False)
-    app.run(debug=True)
+    if debug:
+        app.run(host='0.0.0.0', port=port, debug=True)
+    else:
+        app.run(host='0.0.0.0', port=port, debug=False)
