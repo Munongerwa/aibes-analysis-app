@@ -210,19 +210,7 @@ layout = html.Div([
                         # Connection Status
                         html.Div(id="connection-status", className="mt-3"),
                         
-                        # Connection Tips
-                        dbc.Alert([
-                            html.H6([
-                                html.I(className="fas fa-lightbulb me-2"),
-                                "Connection Tips:"
-                            ], className="mb-2"),
-                            html.Ul([
-                                html.Li("For Local MySQL Workbench: Use localhost:3306"),
-                                html.Li("For Online MySQL Databases: Use the provided host, port, and credentials"),
-                                html.Li("Many cloud providers require SSL connections"),
-                                html.Li("Some databases may require specific SSL certificates")
-                            ], className="mb-0 small")
-                        ], color="info", className="mt-3"),
+
                     ], className="p-4"),
                 ], 
                 className="mt-5 shadow",
