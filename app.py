@@ -1,4 +1,3 @@
-# app.py
 import dash
 from dash import dcc, html, callback, Input, Output, State
 import dash_bootstrap_components as dbc
@@ -7,17 +6,27 @@ import datetime
 import uuid
 import os
 import sqlite3
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from apps import home, dashboard, db_connection, land_bank_analysis, project_analysis, sales_analysis, reports_view, settings
 
-# Initializing the dash app with suppress_callback_exceptions=True
+# App label and icon
+APP_NAME = "AIBES Analytics"  
+APP_ICON = "/assets/aibes.png"  
+
+# Initializing 
 app = dash.Dash(__name__, 
                 external_stylesheets=[
                     dbc.themes.BOOTSTRAP,
                     "https://use.fontawesome.com/releases/v6.0.0/css/all.css"
                 ],
                 suppress_callback_exceptions=True,
-                server=True)
+                server=True,
+                title=APP_NAME,  
+                assets_folder='assets', 
+                
+                meta_tags=[  
+                    {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+                ])
 
 # Make the server object available for gunicorn
 server = app.server
@@ -139,86 +148,116 @@ login_modal = dbc.Modal([
     ]),
 ], id="login-modal", centered=True)
 
-# Modernized Navbar with Gradient
+# Modernized Navbar with custom app name and icon
 navbar = dbc.Navbar(
     dbc.Container([
-        # Brand Section
-        html.A(
-            dbc.Row([
-                html.Img(src="/assets/aibes.png", height="40px"),
-            ],
-            align="center",
-            className="g-0"
-            ),
-            href="/",
-            style={"textDecoration": "none"},
-        ),
-
-        # Desktop Navigation
-        dbc.Nav([
-            dbc.NavItem(dbc.NavLink("Home", href="/", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact", className="mx-2")),
+        # Left side - Brand and Connection Status
+        dbc.Row([
+            # Brand Logo and Name
+            dbc.Col([
+                html.A(
+                    dbc.Row([
+                        html.Img(src="/assets/aibes.png", height="30px", className="me-2"),
+                    ], 
+                    align="center",
+                    className="g-0"
+                    ),
+                    href="/",
+                    style={"textDecoration": "none"},
+                    className="d-flex align-items-center"
+                )
+            ], width="auto", className="d-flex align-items-center pe-2"),
             
-            dbc.DropdownMenu([
-                dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
-                dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
-                dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
-            ], 
-            nav=True, 
-            in_navbar=True, 
-            label="Analysis",
-            className="mx-2"),
-            
-            dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact", className="mx-2")),
-            dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact", className="mx-2")),
-        ], 
-        className="ms-auto d-none d-lg-flex",
-        navbar=True,
-        ),
-
-        # Connection Status and Authentication Buttons
-        html.Div([
-            html.Div(id="navbar-connection-status", className="d-flex align-items-center me-3"),
-            # Always present login and logout buttons (visibility controlled by CSS)
-            dbc.Button([
-                html.I(className="fas fa-sign-in-alt me-1"),
-                "Login"
-            ], id="login-btn", color="success", size="sm", className="btn-sm me-2", href="/apps/db_connection"),
-            dbc.Button([
-                html.I(className="fas fa-sign-out-alt me-1"),
-                "Logout"
-            ], id="logout-btn", color="danger", size="sm", className="btn-sm"),
-        ], className="d-flex align-items-center"),
+            # Connection Status (hidden on very small screens)
+            dbc.Col([
+                html.Div(id="navbar-connection-status", className="d-none d-sm-block")
+            ], width="auto", className="d-flex align-items-center ps-2 border-start border-secondary")
+        ], className="d-flex align-items-center g-0 flex-nowrap mx-0"),
         
-        # Mobile Toggler
-        dbc.NavbarToggler(id="navbar-toggler", className="d-lg-none ms-2"),
-    ], fluid=True),
+        # Right side - Navigation and Auth buttons
+        dbc.Row([
+            # Desktop Navigation
+            dbc.Col([
+                dbc.Nav([
+                    dbc.NavItem(dbc.NavLink("Home", href="/", active="exact", className="mx-1 px-2")),
+                    dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact", className="mx-1 px-2")),
+                    
+                    dbc.DropdownMenu([
+                        dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
+                        dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
+                        dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
+                    ], 
+                    nav=True, 
+                    in_navbar=True, 
+                    label="Analysis",
+                    className="mx-1 px-2"),
+                    
+                    dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact", className="mx-1 px-2")),
+                    dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact", className="mx-1 px-2")),
+                    dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact", className="mx-1 px-2")),
+                ], 
+                className="d-none d-lg-flex align-items-center h-100",
+                navbar=True,
+                ),
+            ], width="auto", className="flex-grow-1"),
+            
+            # Auth Buttons and Mobile Toggler
+            dbc.Col([
+                dbc.Row([
+                    # Connection Status for small screens
+                    dbc.Col([
+                        html.Div(id="navbar-connection-status-mobile", className="d-block d-sm-none me-2")
+                    ], width="auto", className="d-flex align-items-center"),
+                    
+                    # Login/Logout Buttons
+                    dbc.Col([
+                        dbc.Button([
+                            html.I(className="fas fa-sign-in-alt me-1"),
+                            html.Span("Login", className="d-none d-md-inline")
+                        ], id="login-btn", color="success", size="sm", className="btn-sm me-1 me-md-2", href="/apps/db_connection"),
+                        dbc.Button([
+                            html.I(className="fas fa-sign-out-alt me-1"),
+                            html.Span("Logout", className="d-none d-md-inline")
+                        ], id="logout-btn", color="danger", size="sm", className="btn-sm me-1 me-md-2"),
+                    ], width="auto", className="d-flex align-items-center"),
+                    
+                    # Mobile Toggler
+                    dbc.Col([
+                        dbc.NavbarToggler(id="navbar-toggler", className="ms-1 ms-md-2 p-1")
+                    ], width="auto", className="d-flex align-items-center"),
+                ], className="d-flex align-items-center justify-content-end g-0 mx-0 w-100")
+            ], width="auto", className="d-flex align-items-center")
+        ], className="d-flex align-items-center g-0 mx-0 flex-nowrap")
+    ], fluid=True, className="d-flex justify-content-between align-items-center px-3"),
     color="dark",
     dark=True,
     sticky="top",
     className="shadow-sm"
 )
 
-# Mobile Collapsible Menu
-mobile_collapse = dbc.Collapse([
-    dbc.Nav([
-        dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
-        dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact")),
-        dbc.DropdownMenu([
-            dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
-            dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
-            dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
-        ], nav=True, in_navbar=True, label="Analysis"),
-        dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact")),
-        dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact")),
-        dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact")),
-    ], 
-    vertical=True,
-    pills=True,
-    className="px-3 py-2 bg-dark"
-    ),
-], id="navbar-collapse-mobile", navbar=True)
+# Mobile Collapsible Menu - Separate from navbar
+mobile_menu = dbc.Collapse([
+    dbc.Card([
+        dbc.CardBody([
+            dbc.Nav([
+                dbc.NavItem(dbc.NavLink("Home", href="/", active="exact")),
+                dbc.NavItem(dbc.NavLink("Dashboard", href="/apps/dashboard", active="exact")),
+                dbc.DropdownMenu([
+                    dbc.DropdownMenuItem("Land Bank", href="/apps/land_bank_analysis"),
+                    dbc.DropdownMenuItem("Project Analysis", href="/apps/project_analysis"),
+                    dbc.DropdownMenuItem("Sales Analysis", href="/apps/sales_analysis"),
+                ], nav=True, in_navbar=True, label="Analysis"),
+                dbc.NavItem(dbc.NavLink("Reports", href="/apps/reports_view", active="exact")),
+                dbc.NavItem(dbc.NavLink("Database", href="/apps/db_connection", active="exact")),
+                dbc.NavItem(dbc.NavLink("Settings", href="/apps/settings", active="exact")),
+            ], 
+            vertical=True,
+            pills=True,
+            className="px-0 py-2"
+            ),
+        ], className="p-3")
+    ], className="rounded-0 border-0 shadow", color="dark")
+], id="navbar-collapse-mobile", className="mb-0")
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -230,10 +269,10 @@ app.layout = html.Div([
     login_modal,
     # Modernized navbar
     navbar,
-    # Mobile menu
-    mobile_collapse,
-    # Page content
-    html.Div(id='page-content', children=[], className="pt-4"),
+    # Mobile menu (separate from navbar)
+    mobile_menu,
+    # Page content - REMOVED pt-4 CLASS TO START IMMEDIATELY BELOW NAVBAR
+    html.Div(id='page-content', children=[], className=""),  # Removed pt-4 padding
 ])
 
 # Session initialization callback
@@ -317,17 +356,29 @@ def update_auth_button_visibility(pathname):
     
     if is_connected:
         # Hide login button, show logout button
-        return [{"display": "none"}, {"display": "block"}]
+        return [{"display": "none"}, {"display": "inline-block"}]
     else:
         # Show login button, hide logout button
-        return [{"display": "block"}, {"display": "none"}]
+        return [{"display": "inline-block"}, {"display": "none"}]
 
+# Connection status callbacks for both desktop and mobile
+@app.callback(
+    [Output('navbar-connection-status', 'children'),
+     Output('navbar-connection-status-mobile', 'children')],
+    [Input('url', 'pathname')],
+    prevent_initial_call=False
+)
+def update_connection_status(pathname):
+    connection_status = get_connection_status_component()
+    return [connection_status, connection_status]
+
+# Main page content callback
 @app.callback(
     [Output('page-content', 'children'),
-     Output('navbar-connection-status', 'children')],
+     Output('navbar-connection-status', 'children', allow_duplicate=True)],
     [Input('url', 'pathname'),
      Input('confirm-logout-btn', 'n_clicks')],
-    prevent_initial_call=False
+    prevent_initial_call='initial_duplicate'
 )
 def display_page(pathname, logout_clicks):
     ctx = dash.callback_context
@@ -477,7 +528,10 @@ def get_connection_status_component():
     if 'db_connection_string' in session and session['db_connection_string']:
         try:
             engine = create_engine(session['db_connection_string'])
-            connection = engine.connect()
+            with engine.connect() as connection:
+                result = connection.execute(text("SELECT 1"))
+                result.fetchone()
+            
             # Get database name 
             try:
                 from sqlalchemy.engine.url import make_url
@@ -485,12 +539,12 @@ def get_connection_status_component():
                 db_label = url.database or url.host
             except:
                 db_label = session['db_connection_string'].split('/')[-1]
-            connection.close()
             
             return html.Div([
                 html.Span([
                     html.I(className="fas fa-check-circle text-success me-1"),
-                    f"Connected: {db_label}"
+                    html.Span(f"Connected: {db_label}", className="d-none d-md-inline"),
+                    html.Span("✓", className="d-md-none")
                 ], className="text-success small")
             ], className="d-flex align-items-center")
         except Exception as e:
@@ -498,14 +552,16 @@ def get_connection_status_component():
             return html.Div([
                 html.Span([
                     html.I(className="fas fa-exclamation-triangle text-warning me-1"),
-                    "Connection Lost"
+                    html.Span("Connection Lost", className="d-none d-md-inline"),
+                    html.Span("⚠", className="d-md-none")
                 ], className="text-warning small")
             ], className="d-flex align-items-center")
     else:
         return html.Div([
             html.Span([
                 html.I(className="fas fa-times-circle text-danger me-1"),
-                "Not Connected"
+                html.Span("Not Connected", className="d-none d-md-inline"),
+                html.Span("✗", className="d-md-none")
             ], className="text-danger small")
         ], className="d-flex align-items-center")
 

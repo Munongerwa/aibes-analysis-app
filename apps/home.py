@@ -1,10 +1,8 @@
-# apps/home.py - Simple version
 import dash
 from dash import dcc, html, callback, Input, Output
 import dash_bootstrap_components as dbc
 
 layout = html.Div([
-    # Hero Section with inline styles for background
     html.Div([
         dbc.Container([
             dbc.Row([
@@ -43,7 +41,7 @@ layout = html.Div([
                     ], className="text-end")
                 ], md=4, className="d-none d-md-block")
             ], className="py-5 align-items-center")
-        ], fluid=True)
+        ], fluid=True, className="mt-0")
     ], style={
         "backgroundImage": "url('/assets/backimage.png')",
         "backgroundSize": "cover",
