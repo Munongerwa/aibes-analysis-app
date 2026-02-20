@@ -1,3 +1,4 @@
+# app.py
 import dash
 from dash import dcc, html, callback, Input, Output, State
 import dash_bootstrap_components as dbc
@@ -7,13 +8,30 @@ import uuid
 import os
 import sqlite3
 from sqlalchemy import create_engine, text
-from apps import home, dashboard, db_connection, land_bank_analysis, project_analysis, sales_analysis, reports_view, settings
+import sys
 
-# App label and icon
-APP_NAME = "AIBES Analytics"  
-APP_ICON = "/assets/aibes.png"  
+# Handle PyInstaller paths
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
 
-# Initializing 
+# Add project directory to Python path for PyInstaller compatibility
+if getattr(sys, 'frozen', False):
+    application_path = sys._MEIPASS
+    sys.path.insert(0, application_path)
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+# App configuration
+APP_NAME = "AIBES Analytics"  # Change this to your desired app name
+
+# Initializing the dash app with suppress_callback_exceptions=True
 app = dash.Dash(__name__, 
                 external_stylesheets=[
                     dbc.themes.BOOTSTRAP,
@@ -21,10 +39,9 @@ app = dash.Dash(__name__,
                 ],
                 suppress_callback_exceptions=True,
                 server=True,
-                title=APP_NAME,  
-                assets_folder='assets', 
-                
-                meta_tags=[  
+                title=APP_NAME,  # Sets the browser tab title
+                assets_folder=resource_path('assets'),  # PyInstaller compatible assets folder
+                meta_tags=[  # Add viewport meta tag for better mobile responsiveness
                     {"name": "viewport", "content": "width=device-width, initial-scale=1"}
                 ])
 
@@ -37,14 +54,14 @@ app.server.secret_key = 'bati-aibes'
 # Serve generated reports 
 @app.server.route('/generated_reports/<path:filename>')
 def serve_report(filename):
-    reports_dir = os.path.join(os.path.dirname(__file__), "generated_reports")
+    reports_dir = os.path.join(application_path, "generated_reports")
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
     return send_from_directory(reports_dir, filename)
 
 @app.server.route('/serve-logo/<path:filename>')
 def serve_logo(filename):
-    logos_dir = os.path.join(os.path.dirname(__file__), "logos")
+    logos_dir = os.path.join(application_path, "logos")
     if not os.path.exists(logos_dir):
         os.makedirs(logos_dir)
     return send_from_directory(logos_dir, filename)
@@ -53,7 +70,7 @@ def serve_logo(filename):
 def initialize_database_tables():
     """Initialize all required database tables"""
     try:
-        settings_db_path = os.path.join(os.path.dirname(__file__), "settings.db")
+        settings_db_path = os.path.join(application_path, "settings.db")
         conn = sqlite3.connect(settings_db_path)
         cursor = conn.cursor()
         
@@ -157,9 +174,11 @@ navbar = dbc.Navbar(
             dbc.Col([
                 html.A(
                     dbc.Row([
-                        html.Img(src="/assets/aibes.png", height="30px", className="me-2"),
+                        html.Img(src="/assets/logo.png", height="30px", className="me-2"),
+                        
                     ], 
                     align="center",
+
                     className="g-0"
                     ),
                     href="/",
@@ -568,10 +587,12 @@ def get_connection_status_component():
 # Initialize database tables when the app starts
 initialize_database_tables()
 
+# Import apps after app initialization to avoid circular imports
+from apps import home, dashboard, db_connection, land_bank_analysis, project_analysis, sales_analysis, reports_view, settings
+
 if __name__ == '__main__':
-    # Get port from environment variable (for Render) or default to 8000
-    port = int(os.environ.get('PORT', 8000))
+    # Get port from environment variable (for Render) or default to 8050
+    #port = int(os.environ.get('PORT', 8050))
     
     # Run the app
-    #app.run(host='0.0.0.0', port=port, debug=False)
     app.run(debug=True)

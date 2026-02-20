@@ -93,21 +93,9 @@ layout = html.Div([
                                     placeholder="Select a project",
                                     className="mb-3"
                                 )
-                            ], width=12)
-                        ]),
-                        
-                        dbc.Button([
-                            html.I(className="fas fa-sync me-2"),
-                            "Refresh Analysis"
-                        ], id="refresh-project-button", color="primary", className="w-100")
-                    ])
-                ])
-            ], width=12)
-        ], className="mb-4"),
-        
-        # Cards
-        dbc.Row([
-            dbc.Col([
+                            ], width=12),
+
+         dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
@@ -116,9 +104,9 @@ layout = html.Div([
                             html.P("Active projects", className="text-center text-muted small")
                         ], className="text-center")
                     ])
-                ], className="shadow-sm")
+                ], className="shadow-lg")
             ], width=12, md=3),
-            
+
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
@@ -128,10 +116,10 @@ layout = html.Div([
                             html.P("Across all projects", className="text-center text-muted small")
                         ], className="text-center")
                     ])
-                ], className="shadow-sm")
+                ], className="shadow-lg")
             ], width=12, md=3),
-            
-            dbc.Col([
+
+           dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
@@ -142,7 +130,7 @@ layout = html.Div([
                     ])
                 ], className="shadow-sm")
             ], width=12, md=3),
-            
+
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
@@ -153,7 +141,38 @@ layout = html.Div([
                         ], className="text-center")
                     ])
                 ], className="shadow-sm")
-            ], width=12, md=3)
+            ], width=12, md=3, className="mb-4"),
+
+                        ]),
+
+
+
+
+
+
+
+
+
+
+                        
+                        dbc.Button([
+                            html.I(className="fas fa-sync me-2"),
+                            "Refresh Analysis"
+                        ], id="refresh-project-button", color="primary", className="w-50")
+                    ])
+                ])
+            ], width=12)
+        ], className="mb-4"),
+        
+        # Cards
+        dbc.Row([
+
+            
+
+            
+
+            
+
         ], className="mb-4"),
         
         # Charts

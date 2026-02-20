@@ -122,8 +122,8 @@ layout = html.Div([
     
     # Modern Filters Section
     dbc.Container([
-        dbc.Card([
-            dbc.CardBody([
+        
+            
                 dbc.Row([
                     # Time Range Filter
                     dbc.Col([
@@ -146,7 +146,7 @@ layout = html.Div([
                         ], className="mb-3")
                     ], width=12, lg=8),
                     
-                    # Year Filter (conditionally shown)
+                    # Year Filter (conditionally shown) - MODIFIED FOR UPWARD EXPANSION
                     dbc.Col([
                         html.Div([
                             html.Small([
@@ -161,142 +161,119 @@ layout = html.Div([
                                 ],
                                 value=datetime.datetime.now().year,
                                 clearable=False,
-                                className="modern-dropdown"
+                                className="modern-dropdown dropdown-upward",
+                                optionHeight=35,  # Ensure enough space for options
                             )
                         ], id="year-filter-container", className="mb-3")
-                    ], width=12, lg=4)
-                ])
-            ])
-        ], className="shadow-sm mb-4 modern-filter-card"),
-        
-        # Manual Report Status
-        html.Div(id="manual-report-status", className="mb-3"),
-        
-        # Metrics Cards Row
-        dbc.Row([
-            # Total Stand Value Card
+                    ], width=12, lg=4),
+
+                                dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-dollar-sign fa-lg text-success"),
+                            ], className="d-flex justify-content-center mb-2"),
+                            html.H6("Total Stand Value", className="card-title text-center mb-1", style={"font-size": "15px"}),
+                            html.H4(id="total-stand-value", children="$0", className="text-center text-success fw-bold mb-1,", style={"font-size": "15px"}),
+                            html.Small(id="stand-value-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="stand-value-yoy", className="text-center mt-1", style={"font-size": "15px"})
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg h-100")
+            ], width=12, md=6, lg=2, className="mb-3"),
+
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-dollar-sign fa-2x text-success"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Total Stand Value", className="card-title text-center"),
-                            html.H2(id="total-stand-value", children="$0", className="text-center text-success fw-bold"),
-                            html.P(id="stand-value-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="stand-value-yoy", className="text-center mt-2")
+                                html.I(className="fas fa-house fa-lg text-primary", style={"font-size": "15px"}),
+                            ], className="d-flex justify-content-center mb-2", style={"font-size": "15px"}),
+                            html.H6("Stands Sold", className="card-title text-center mb-1", style={"font-size": "15px"}),
+                            html.H4(id="stands-sold-value", children="0", className="text-center text-primary fw-bold mb-1", style={"font-size": "15px"}),
+                            html.Small(id="stands-sold-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="stands-sold-yoy", className="text-center mt-1", style={"font-size": "15px"})
                         ], className="text-center")
                     ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
-            
-            # Number of stands sold 
+                ], className="shadow-lg h-100"),
+                 ], width=12, md=6, lg=2, className="mb-3"),
+
+             # Stands Available for Sale
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-house fa-2x text-primary"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Stands Sold", className="card-title text-center"),
-                            html.H2(id="stands-sold-value", children="0", className="text-center text-primary fw-bold"),
-                            html.P(id="stands-sold-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="stands-sold-yoy", className="text-center mt-2")
+                                html.I(className="fas fa-tags fa-lg text-info"),
+                            ], className="d-flex justify-content-center mb-2"),
+                            html.H6("Available Stands", className="card-title text-center mb-1",style={"font-size": "15px"}),
+                            html.H4(id="stands-available-value", children="0", className="text-center text-info fw-bold mb-1", style={"font-size": "15px"}),
+                            html.Small(id="stands-available-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="stands-available-yoy", className="text-center mt-1", style={"font-size": "15px"})
                         ], className="text-center")
                     ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
-            
-            # Stands Available for Sale
-            dbc.Col([
+                ], className="shadow-lg h-100")
+            ], width=12, md=6, lg=2, className="mb-3"),
+
+
+            # reserved stands
+                dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-tags fa-2x text-info"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Available Stands", className="card-title text-center"),
-                            html.H2(id="stands-available-value", children="0", className="text-center text-info fw-bold"),
-                            html.P(id="stands-available-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="stands-available-yoy", className="text-center mt-2")
+                                html.I(className="fas fa-lock fa-lg text-warning"),
+                            ], className="d-flex justify-content-center mb-2"),
+                            html.H6("Reserved Stands", className="card-title text-center mb-1", style={"font-size": "15px"}),
+                            html.H4(id="stands-reserved-value", children="0", className="text-center text-warning fw-bold mb-1", style={"font-size": "15px"}),
+                            html.Small(id="stands-reserved-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="stands-reserved-yoy", className="text-center mt-1", style={"font-size": "15px"})
                         ], className="text-center")
                     ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
-            
-            # Reserved Stands
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.Div([
-                                html.I(className="fas fa-lock fa-2x text-warning"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Reserved Stands", className="card-title text-center"),
-                            html.H2(id="stands-reserved-value", children="0", className="text-center text-warning fw-bold"),
-                            html.P(id="stands-reserved-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="stands-reserved-yoy", className="text-center mt-2")
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=3),
-        ], className="mb-4 g-3"),
-        
-        # Additional Metrics Row
-        dbc.Row([
+                ], className="shadow-lg h-100")
+            ], width=12, md=6, lg=2, className="mb-3"),
+
             # Total deposit card
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-money-bill-wave fa-2x text-success"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Total Deposit", className="card-title text-center"),
-                            html.H2(id="total-deposit-value", children="$0", className="text-center text-success fw-bold"),
-                            html.P(id="deposit-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="deposit-yoy", className="text-center mt-2")
+                                html.I(className="fas fa-money-bill-wave fa-lg text-success"),
+                            ], className="d-flex justify-content-center mb-2", style={"font-size": "15px"}),
+                            html.H6("Total Deposit", className="card-title text-center mb-1", style={"font-size": "15px"}),
+                            html.H4(id="total-deposit-value", children="$0", className="text-center text-success fw-bold mb-1",  style={"font-size": "15px"}),
+                            html.Small(id="deposit-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="deposit-yoy", className="text-center mt-1", style={"font-size": "15px"})
                         ], className="text-center")
                     ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=4),
-            
+                ], className="shadow-lg h-100")
+            ], width=12, md=6, lg=2, className="mb-3"),
+
             # Total installment card
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         html.Div([
                             html.Div([
-                                html.I(className="fas fa-file-invoice-dollar fa-2x text-primary"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Total Installment", className="card-title text-center"),
-                            html.H2(id="total-installment-value", children="$0", className="text-center text-primary fw-bold"),
-                            html.P(id="installment-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="installment-yoy", className="text-center mt-2")
+                                html.I(className="fas fa-file-invoice-dollar fa-lg text-primary"),
+                            ], className="d-flex justify-content-center mb-2"),
+                            html.H6("Total Installment", className="card-title text-center mb-1", style={"font-size": "15px"}),
+                            html.H4(id="total-installment-value", children="$0", className="text-center text-primary fw-bold mb-1",style={"font-size": "15px"}),
+                            html.Small(id="installment-period", children="Period: --", className="text-center text-muted d-block", style={"font-size": "15px"}),
+                            html.Div(id="installment-yoy", className="text-center mt-1",style={"font-size": "15px"})
                         ], className="text-center")
                     ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=6, lg=4),
+                ], className="shadow-lg h-100")
+            ], width=12, md=6, lg=2, className="mb-3"),
             
-            # Conversion Rate
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.Div([
-                                html.I(className="fas fa-percentage fa-2x text-info"),
-                            ], className="d-flex justify-content-center mb-3"),
-                            html.H4("Conversion Rate", className="card-title text-center"),
-                            html.H2(id="conversion-rate-value", children="0%", className="text-center text-info fw-bold"),
-                            html.P(id="conversion-period", children="Period: --", className="text-center text-muted small"),
-                            html.Div(id="conversion-yoy", className="text-center mt-2")
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm h-100")
-            ], width=12, md=12, lg=4),
-        ], className="mb-4 g-3"),
-        
+        ], className="shadow-lg mb-4 modern-filter-card" ),
+            
+        # Manual Report Status
+        html.Div(id="manual-report-status", className="mb-3"),
+         
+
         # Graphs Row
         dbc.Row([
             # Pie chart 
@@ -437,7 +414,7 @@ def update_project_performance_chart(time_filter, selected_year):
             go.Bar(
                 x=project_df['project_label'],
                 y=project_df['stands_sold'],
-                marker_color="#079b38",
+                marker_color="#9E0897",
                 text=project_df['stands_sold'],
                 textposition='auto',
                 hovertemplate='<b>%{x}</b><br>' +
@@ -487,14 +464,12 @@ def update_project_performance_chart(time_filter, selected_year):
      Output("stands-reserved-value", "children"),
      Output("total-deposit-value", "children"),
      Output("total-installment-value", "children"),
-     Output("conversion-rate-value", "children"),
      Output("stand-value-period", "children"),
      Output("stands-sold-period", "children"),
      Output("stands-available-period", "children"),
      Output("stands-reserved-period", "children"),
      Output("deposit-period", "children"),
      Output("installment-period", "children"),
-     Output("conversion-period", "children"),
      Output("deposits-installments-pie", "figure"),
      Output("stands-sold-area", "figure"),
      Output("stand-value-yoy", "children"),
@@ -503,7 +478,6 @@ def update_project_performance_chart(time_filter, selected_year):
      Output("stands-reserved-yoy", "children"),
      Output("deposit-yoy", "children"),
      Output("installment-yoy", "children"),
-     Output("conversion-yoy", "children"),
      Output("report-data-store", "children")],  # Stored as JSON string
     [Input("time-filter-radio", "value"),
      Input("year-dropdown", "value")],
@@ -645,26 +619,6 @@ def update_dashboard_metrics(time_filter, selected_year):
             current_installment = 0
         formatted_installment = f"${current_installment:,.2f}" if current_installment else "$0"
         
-        # Conversion Rate Calculation
-        try:
-            # Total stands registered (both sold and available)
-            total_registered_query = f"""
-            SELECT COUNT(stand_number) AS total_registered
-            FROM Stands
-            WHERE {date_condition}
-            """
-            total_registered_df = pd.read_sql(total_registered_query, engine)
-            total_registered = total_registered_df.iloc[0]['total_registered'] if not total_registered_df.empty and not pd.isna(total_registered_df.iloc[0]['total_registered']) else 0
-            
-            if total_registered > 0:
-                conversion_rate = (current_stands_sold / total_registered) * 100
-            else:
-                conversion_rate = 0
-        except Exception as e:
-            print(f"Conversion rate query error: {e}")
-            conversion_rate = 0
-        formatted_conversion_rate = f"{conversion_rate:.1f}%" if conversion_rate else "0%"
-        
         # Store data for report (as JSON string)
         report_data = {
             'total_stand_value': formatted_stand_value,
@@ -673,7 +627,6 @@ def update_dashboard_metrics(time_filter, selected_year):
             'stands_reserved': formatted_stands_reserved,
             'total_deposit': formatted_deposit,
             'total_installment': formatted_installment,
-            'conversion_rate': formatted_conversion_rate,
             'period_text': period_text
         }
         report_data_json = json.dumps(report_data)
@@ -785,22 +738,7 @@ def update_dashboard_metrics(time_filter, selected_year):
             except:
                 previous_installment = 0
             
-            # Previous conversion rate
-            try:
-                prev_registered_query = f"""
-                SELECT COUNT(stand_number) AS total_registered
-                FROM Stands
-                WHERE YEAR(registration_date) = {previous_year}
-                """
-                prev_registered_df = pd.read_sql(prev_registered_query, engine)
-                previous_registered = prev_registered_df.iloc[0]['total_registered'] if not prev_registered_df.empty and not pd.isna(prev_registered_df.iloc[0]['total_registered']) else 0
-                
-                if previous_registered > 0:
-                    previous_conversion_rate = (previous_stands_sold / previous_registered) * 100
-                else:
-                    previous_conversion_rate = 0
-            except:
-                previous_conversion_rate = 0
+
             
             stand_value_yoy = calculate_yoy_change(current_stand_value, previous_stand_value)
             stands_sold_yoy = calculate_yoy_change(current_stands_sold, previous_stands_sold)
@@ -808,14 +746,14 @@ def update_dashboard_metrics(time_filter, selected_year):
             stands_reserved_yoy = calculate_yoy_change(current_stands_reserved, previous_stands_reserved)
             deposit_yoy = calculate_yoy_change(current_deposit, previous_deposit)
             installment_yoy = calculate_yoy_change(current_installment, previous_installment)
-            conversion_yoy = calculate_yoy_change(conversion_rate, previous_conversion_rate)
+
         else:
             # Default YoY for non-yearly views
             default_yoy = html.Span([
                 html.I(className="fas fa-minus-circle me-1 text-muted"),
                 "N/A"
             ], className="text-muted small")
-            stand_value_yoy = stands_sold_yoy = stands_available_yoy = stands_reserved_yoy = deposit_yoy = installment_yoy = conversion_yoy = default_yoy
+            stand_value_yoy = stands_sold_yoy = stands_available_yoy = stands_reserved_yoy = deposit_yoy = installment_yoy = default_yoy
         
         #Deposits vs Installments
         pie_data = [current_deposit, current_installment]
@@ -1064,11 +1002,11 @@ def update_dashboard_metrics(time_filter, selected_year):
             )
 
         return [status, formatted_stand_value, formatted_stands_sold, formatted_stands_available, 
-                formatted_stands_reserved, formatted_deposit, formatted_installment, formatted_conversion_rate,
-                period_text, period_text, period_text, period_text, period_text, period_text, period_text,
+                formatted_stands_reserved, formatted_deposit, formatted_installment, 
+                period_text, period_text, period_text, period_text, period_text, period_text,
                 pie_fig, area_fig,
                 stand_value_yoy, stands_sold_yoy, stands_available_yoy, stands_reserved_yoy, 
-                deposit_yoy, installment_yoy, conversion_yoy, report_data_json]
+                deposit_yoy, installment_yoy, report_data_json]
         
     except Exception as e:
         print(f"Main callback error: {e}")

@@ -106,100 +106,95 @@ layout = html.Div([
                                     placeholder="Select day",
                                     className="mb-2"
                                 )
-                            ], width=3),
+                            ], width=3, className="mb-3"),
+
+                                        dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Total Stands", className="card-title text-center", style={"font-size": "20px"}),
+                            html.H2(id="total-stands", children="0 stands", className="text-center text-success fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2),
+
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Available Stands", className="card-title text-center", style={"font-size": "17px"}),
+                            html.H2(id="available-stands", children="0 stands", className="text-center text-primary fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2),
+
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Reserved Stands", className="card-title text-center", style={"font-size": "17px"}),
+                            html.H2(id="reserved-stands", children="0 stands", className="text-center text-warning fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2),
+
+                        dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Sold Stands", className="card-title text-center", style={"font-size": "20px"}),
+                            html.H2(id="sold-stands", children="0 stands", className="text-center text-secondary fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2),
+
+                         dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Commercial Stands", className="card-title text-center", style={"font-size": "17px"}),
+                            html.H2(id="commercial-stands", children="0 stands", className="text-center text-info fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2),
+
+                        dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Residential Stands", className="card-title text-center", style={"font-size": "17px"}),
+                            html.H2(id="residential-stands", children="0 stands", className="text-center text-purple fw-bold", style={"font-size": "15px"}),
+                        ], className="text-center")
+                    ])
+                ], className="shadow-lg")
+            ], width=12, md=3, lg=2, className="mb-3")
+
+            
+            
                         ]),
                         
                         dbc.Button([
                             html.I(className="fas fa-sync me-2"),
                             "Refresh Analysis"
-                        ], id="refresh-land-bank-button", color="primary", className="w-100")
+                        ], id="refresh-land-bank-button", color="primary", className="w-20 mb-3"),
                     ])
                 ])
-            ], width=12)
+            ], width=12, className="mb-3"),
+
+
+
+
+
         ], className="mb-3"),
-        
-        # Metric Cards
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Total Stands", className="card-title text-center"),
-                            html.H2(id="total-stands", children="0 stands", className="text-center text-success fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=3),
-            
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Available Stands", className="card-title text-center"),
-                            html.H2(id="available-stands", children="0 stands", className="text-center text-primary fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=3),
-
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Reserved Stands", className="card-title text-center"),
-                            html.H2(id="reserved-stands", children="0 stands", className="text-center text-warning fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=3),
-
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Sold Stands", className="card-title text-center"),
-                            html.H2(id="sold-stands", children="0 stands", className="text-center text-secondary fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=3),
-            
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Commercial Stands", className="card-title text-center"),
-                            html.H2(id="commercial-stands", children="0 stands", className="text-center text-info fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=6),
-            
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.Div([
-                            html.H4("Residential Stands", className="card-title text-center"),
-                            html.H2(id="residential-stands", children="0 stands", className="text-center text-purple fw-bold"),
-                        ], className="text-center")
-                    ])
-                ], className="shadow-sm")
-            ], width=6, md=6)
-        ], className="mb-4"),
-        
+                
         # Charts
         dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="fas fa-chart-pie me-2"),
-                        "Land Distribution by Status"
-                    ]),
-                    dbc.CardBody([
-                        dcc.Graph(id="land-status-pie-chart", style={"height": "400px"})
-                    ])
-                ], className="mb-4")
-            ], width=12, md=6),
+
             
             dbc.Col([
                 dbc.Card([
@@ -208,12 +203,24 @@ layout = html.Div([
                         "Project Comparison"
                     ]),
                     dbc.CardBody([
-                        dcc.Graph(id="land-project-bar-chart", style={"height": "400px"})
+                        dcc.Graph(id="land-project-bar-chart", style={"height": "600px"})
                     ])
                 ], className="mb-4")
-            ], width=12, md=6)
-        ])
-    ], className="mt-4", fluid=True)
+            ], width=12, md=6, style={"width": "60%"}),
+
+                        dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.I(className="fas fa-chart-pie me-2"),
+                        "Land Distribution by Status"
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(id="land-status-pie-chart", style={"height": "600px"})
+                    ])
+                ],  className="mb-4", style={"width": "90%"})
+            ], width=12, md=6, lg=6, style={"width": "40%"}),
+        ],className="g-5")
+    ], className="mt-4 g-2", fluid=True)
 ])
 
 # Callback to manage level button states
@@ -530,7 +537,7 @@ def update_land_bank_analysis(n_clicks, time_level, selected_year, selected_mont
                 barmode='group',
                 xaxis_tickangle=-45,
                 hovermode='closest',
-                height=400
+                height=600
             )
         else:
             bar_fig = go.Figure()

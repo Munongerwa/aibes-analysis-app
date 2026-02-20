@@ -112,10 +112,10 @@ layout = html.Div([
                             html.I(className="fas fa-sync me-2"),
                             "Refresh Analysis"
                         ], id="refresh-sales-button", color="primary", className="w-100")
-                    ])
+                    ], style={"minHeight": "400px"})
                 ])
             ], width=12)
-        ], className="mb-3"),
+        ], className="mb-5"),
         
         # Metric Cards
         dbc.Row([

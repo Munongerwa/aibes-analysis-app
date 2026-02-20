@@ -585,7 +585,7 @@ ORDER BY stands_value DESC
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                     ('FONTSIZE', (0, 0), (-1, 0), 11),
                     ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+                    ('BACKGROUND', (0, 1), (-1, -2), colors.white),
                     ('GRID', (0, 0), (-1, -1), 1, colors.black),
                     ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
                     ('FONTSIZE', (0, 1), (-1, -2), 10),
