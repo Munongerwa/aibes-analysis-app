@@ -40,7 +40,7 @@ layout = html.Div([
                         })
                     ], className="text-end")
                 ], md=4, className="d-none d-md-block")
-            ], className="py-5 align-items-center")
+            ], className="py-4 align-items-center")
         ], fluid=True, className="mt-0")
     ], style={
         "backgroundImage": "url('/assets/backimage.png')",
@@ -71,7 +71,7 @@ layout = html.Div([
                             "with detailed metrics and visualizations."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4"),
             
             dbc.Col([
@@ -86,7 +86,7 @@ layout = html.Div([
                             "across all development initiatives."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4"),
             
             dbc.Col([
@@ -101,7 +101,7 @@ layout = html.Div([
                             "analytics for informed decision making."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4")
         ]),
         
@@ -118,7 +118,7 @@ layout = html.Div([
                             "and automated scheduling capabilities."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4"),
             
             dbc.Col([
@@ -133,7 +133,7 @@ layout = html.Div([
                             "PostgreSQL, and cloud databases."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4"),
             
             dbc.Col([
@@ -148,7 +148,7 @@ layout = html.Div([
                             "on desktops, tablets, and mobile devices."
                         ], className="card-text text-center")
                     ])
-                ], className="h-100 shadow-sm")
+                ], className="h-100 shadow-lg")
             ], md=4, className="mb-4")
         ])
     ], className="my-5"),

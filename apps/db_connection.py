@@ -1,3 +1,4 @@
+# db_connection.py
 import dash
 from dash import dcc, html, Input, Output, State, callback
 import dash_bootstrap_components as dbc
@@ -6,10 +7,20 @@ from sqlalchemy.exc import SQLAlchemyError
 from flask import session
 import os
 import urllib.parse
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add PyMySQL support
-import pymysql
-pymysql.install_as_MySQLdb()
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    MYSQL_AVAILABLE = True
+except ImportError:
+    MYSQL_AVAILABLE = False
+    logger.warning("PyMySQL not installed. Database connection will not work.")
 
 layout = html.Div([
     dcc.Location(id="db-connection-url", refresh=True),  
@@ -40,7 +51,11 @@ layout = html.Div([
                             html.I(className="fas fa-database me-2"),
                             "Database Connection"
                         ], className="text-center mb-0"),
-                        className="bg-primary text-white"
+                        className="text-white",
+                        style={
+                            'backgroundColor': '#0F3559',
+                           
+                        }
                     ),
                     dbc.CardBody([
                         # Connection Type Selection
@@ -209,8 +224,6 @@ layout = html.Div([
                         
                         # Connection Status
                         html.Div(id="connection-status", className="mt-3"),
-                        
-
                     ], className="p-4"),
                 ], 
                 className="mt-5 shadow",
@@ -247,6 +260,96 @@ def toggle_connection_form(connection_type):
     else:  # local
         return [{"display": "none"}, {"display": "block"}, {"display": "none"}]
 
+
+    
+    # Create connection entry (without password for security)
+    if connection_type == "custom":
+        connection_entry = {
+            'type': 'custom',
+            'name': f"Custom: {connection_string.split('@')[1] if '@' in connection_string else 'Connection'}",
+            'connection_string': connection_string
+        }
+    else:
+        connection_entry = {
+            'type': connection_type,
+            'name': f"{connection_type.title()}: {database}@{host}",
+            'host': host,
+            'port': port,
+            'database': database,
+            'username': username
+        }
+    
+    # Avoid duplicates
+    if connection_entry not in saved_connections:
+        saved_connections.append(connection_entry)
+        session['saved_connections'] = saved_connections
+    
+    # Display saved connections
+    if saved_connections:
+        connection_items = []
+        for i, conn in enumerate(saved_connections):
+            connection_items.append(
+                dbc.ListGroupItem([
+                    html.Div([
+                        html.Strong(conn['name']),
+                        html.Small(f" ({conn['type']})", className="text-muted ms-2"),
+                        dbc.Button([
+                            html.I(className="fas fa-trash")
+                        ], id={'type': 'delete-connection', 'index': i}, 
+                           color="danger", size="sm", className="float-end")
+                    ])
+                ], className="d-flex justify-content-between align-items-center")
+            )
+        return dbc.ListGroup(connection_items, flush=True)
+    else:
+        return html.Small("No saved connections", className="text-muted")
+
+# Callback to delete saved connection
+@callback(
+    Output("saved-connections-list", "children", allow_duplicate=True),
+    Input({'type': 'delete-connection', 'index': dash.ALL}, 'n_clicks'),
+    prevent_initial_call=True
+)
+def delete_connection(n_clicks_list):
+    # Find which button was clicked
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return dash.no_update
+    
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id.startswith('{'):
+        import json
+        triggered_dict = json.loads(triggered_id.replace("'", '"'))
+        index = triggered_dict['index']
+        
+        # Remove connection at index
+        saved_connections = session.get('saved_connections', [])
+        if 0 <= index < len(saved_connections):
+            saved_connections.pop(index)
+            session['saved_connections'] = saved_connections
+        
+        # Refresh display
+        if saved_connections:
+            connection_items = []
+            for i, conn in enumerate(saved_connections):
+                connection_items.append(
+                    dbc.ListGroupItem([
+                        html.Div([
+                            html.Strong(conn['name']),
+                            html.Small(f" ({conn['type']})", className="text-muted ms-2"),
+                            dbc.Button([
+                                html.I(className="fas fa-trash")
+                            ], id={'type': 'delete-connection', 'index': i}, 
+                               color="danger", size="sm", className="float-end")
+                        ])
+                    ], className="d-flex justify-content-between align-items-center")
+                )
+            return dbc.ListGroup(connection_items, flush=True)
+        else:
+            return html.Small("No saved connections", className="text-muted")
+    
+    return dash.no_update
+
 # Callback to handle database connection
 @callback(
     [Output("connection-status", "children"),
@@ -264,6 +367,16 @@ def toggle_connection_form(connection_type):
     prevent_initial_call=True
 )
 def connect_to_database(n_clicks, connection_type, host, port, database, username, password, connection_string, ssl_mode, ssl_cert_path):
+    # Check if MySQL is available
+    if not MYSQL_AVAILABLE:
+        return [dbc.Alert([
+            html.I(className="fas fa-exclamation-triangle me-2"),
+            "MySQL driver not found. Please install pymysql: pip install pymysql"
+        ], 
+        color="danger",
+        className="mt-3"
+        ), dash.no_update]
+    
     try:
         # Build connection string based on connection type
         if connection_type == "custom":
@@ -299,7 +412,9 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
             
             port = port or "3306"
             if password:
-                final_connection_string = f"mysql+pymysql://{username}:{urllib.parse.quote(password)}@{host}:{port}/{database}"
+                # URL encode the password to handle special characters
+                encoded_password = urllib.parse.quote_plus(password)
+                final_connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}:{port}/{database}"
             else:
                 final_connection_string = f"mysql+pymysql://{username}@{host}:{port}/{database}"
         else:  # local
@@ -327,7 +442,9 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
             
             port = port or "3306"
             if password:
-                final_connection_string = f"mysql+pymysql://{username}:{urllib.parse.quote(password)}@{host}:{port}/{database}"
+                # URL encode the password to handle special characters
+                encoded_password = urllib.parse.quote_plus(password)
+                final_connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}:{port}/{database}"
             else:
                 final_connection_string = f"mysql+pymysql://{username}@{host}:{port}/{database}"
         
@@ -365,6 +482,9 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
             
             engine_params['connect_args'] = connect_args
         
+        # Log connection attempt (without password)
+        logger.info(f"Attempting to connect to database: {final_connection_string.split('@')[1] if '@' in final_connection_string else final_connection_string}")
+        
         engine = create_engine(final_connection_string, **engine_params)
         
         # Test the connection
@@ -374,10 +494,21 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
         
         # Store connection string and SSL info in user session
         session['db_connection_string'] = final_connection_string
+        session['db_connection_details'] = {
+            'type': connection_type,
+            'host': host,
+            'port': port,
+            'database': database,
+            'username': username
+        }
+        
         if connection_type == "online":
             session['ssl_mode'] = ssl_mode
             if ssl_cert_path and ssl_cert_path.strip():
                 session['ssl_cert_path'] = ssl_cert_path
+        
+        # Log successful connection
+        logger.info("Database connection successful")
         
         # Return success message and redirect to dashboard
         success_alert = dbc.Alert([
@@ -392,6 +523,8 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
         
     except SQLAlchemyError as e:
         error_msg = str(e)
+        logger.error(f"SQLAlchemy error during connection: {error_msg}")
+        
         # Provide more user-friendly error messages
         if "Access denied" in error_msg:
             user_error = "Access denied. Please check your username and password."
@@ -403,8 +536,8 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
             user_error = "SSL connection is required. Please enable SSL or check SSL settings."
         elif "certificate verify failed" in error_msg:
             user_error = "SSL certificate verification failed. Please check your SSL certificate path."
-        elif "No module named" in error_msg and "MySQLdb" in error_msg:
-            user_error = "MySQL driver not found. Please install pymysql: pip install pymysql"
+        elif "timed out" in error_msg.lower():
+            user_error = "Connection timed out. Please check your network connection and database server."
         else:
             user_error = f"Database connection error: {error_msg}"
             
@@ -417,6 +550,8 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
         ), dash.no_update]
     except Exception as e:
         error_msg = str(e)
+        logger.error(f"Unexpected error during connection: {error_msg}")
+        
         if "No module named" in error_msg and ("MySQLdb" in error_msg or "pymysql" in error_msg):
             user_error = "MySQL driver not found. Please install pymysql: pip install pymysql"
             return [dbc.Alert([
@@ -436,6 +571,7 @@ def connect_to_database(n_clicks, connection_type, host, port, database, usernam
             ), dash.no_update]
 
 def get_db_engine():
+    """Get database engine from session"""
     if 'db_connection_string' in session and session['db_connection_string']:
         try:
             engine_params = {
@@ -469,11 +605,12 @@ def get_db_engine():
             )
             return engine
         except Exception as e:
-            print(f"Error creating engine: {e}")
+            logger.error(f"Error creating engine: {e}")
             return None
     return None
 
 def is_connected():
+    """Check if database is connected"""
     engine = get_db_engine()
     if engine:
         try:
@@ -482,6 +619,21 @@ def is_connected():
                 result.fetchone()
             return True
         except Exception as e:
-            print(f"Connection test failed: {e}")
+            logger.error(f"Connection test failed: {e}")
             return False
     return False
+
+def disconnect_database():
+    """Disconnect from database and clean up session"""
+    try:
+        # Remove database connection from session
+        session.pop('db_connection_string', None)
+        session.pop('db_connection_details', None)
+        session.pop('ssl_mode', None)
+        session.pop('ssl_cert_path', None)
+        
+        logger.info("Database disconnected and session cleaned up")
+        return True
+    except Exception as e:
+        logger.error(f"Error during database disconnection: {e}")
+        return False
