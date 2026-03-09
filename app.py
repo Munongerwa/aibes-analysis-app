@@ -12,6 +12,7 @@ import sys
 import atexit
 import signal
 import logging
+import tempfile
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -55,16 +56,22 @@ app = dash.Dash(__name__,
 # Make the server object available for gunicorn
 server = app.server
 
-# Configure session middleware
-from flask import Flask
-from flask_session import Session
+# Configure session middleware - FIXED FOR FLASK 2.0+ COMPATIBILITY
+# Ensure session cookie name is set
+if not hasattr(server, 'session_cookie_name'):
+    server.session_cookie_name = 'session'
 
-app.server.config['SECRET_KEY'] = 'bati-aibes'
-app.server.config['SESSION_TYPE'] = 'filesystem'
-app.server.config['SESSION_PERMANENT'] = False
-app.server.config['SESSION_USE_SIGNER'] = True
-app.server.config['SESSION_KEY_PREFIX'] = 'aibes_'
-Session(app.server)
+# Use filesystem sessions with temporary directory
+server.config['SECRET_KEY'] = 'bati-aibes'
+server.config['SESSION_TYPE'] = 'filesystem'
+server.config['SESSION_FILE_DIR'] = tempfile.mkdtemp()
+server.config['SESSION_PERMANENT'] = False
+server.config['SESSION_USE_SIGNER'] = True
+server.config['SESSION_KEY_PREFIX'] = 'aibes_'
+
+# Import and initialize Flask-Session after config
+from flask_session import Session
+Session(server)
 
 # Store active connections for cleanup
 active_connections = {}
@@ -176,7 +183,6 @@ except ImportError as e:
     dashboard = MockLayout()
     db_connection = MockLayout()
     land_bank_analysis = MockLayout()
-    project_analysis = MockLayout()
     sales_analysis = MockLayout()
     reports_view = MockLayout()
     settings = MockLayout()
@@ -682,9 +688,15 @@ def get_user_db_connection():
 # Initialize database tables when the app starts
 initialize_database_tables()
 
+# Initialize favicon route
+@app.server.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.server.root_path, 'assets'),
+                             'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 if __name__ == '__main__':
     # Get port from environment variable (for Render) or default to 8050
     port = int(os.environ.get('PORT', 8050))
     
     # Run the app
-    app.run()
+    app.run_server(debug=False)
