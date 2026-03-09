@@ -9,7 +9,7 @@ layout = html.Div([
                 dbc.Col([
                     html.H1([
                         html.Span("Welcome to ", style={"color": "#ffffff"}),
-                        html.Span("AIBES ANALYSIS", style={"color": "#007bff"})
+                        html.Span("AIBES ANALYTICS", style={"color": "#007bff"})
                     ], className="display-4 fw-bold mb-4"),
                     html.P([
                         "Your comprehensive solution for real estate data analysis, ",

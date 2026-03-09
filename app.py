@@ -36,7 +36,7 @@ else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 
 # App configuration
-APP_NAME = "AIBES Analytics"  # Change this to your desired app name
+APP_NAME = "AIBES Analytics"  
 
 # Initializing the dash app with suppress_callback_exceptions=True
 app = dash.Dash(__name__, 
@@ -46,9 +46,9 @@ app = dash.Dash(__name__,
                 ],
                 suppress_callback_exceptions=True,
                 server=True,
-                title=APP_NAME,  # Sets the browser tab title
+                title=APP_NAME,  
                 assets_folder=resource_path('assets'),  # PyInstaller compatible assets folder
-                meta_tags=[  # Add viewport meta tag for better mobile responsiveness
+                meta_tags=[  #viewport meta tag for better mobile responsiveness
                     {"name": "viewport", "content": "width=device-width, initial-scale=1"}
                 ])
 
@@ -245,12 +245,10 @@ def create_auth_button(is_connected):
             html.Span("Login", className="d-none d-md-inline")
         ], id="auth-btn", color="success", size="sm", className="btn-sm", href="/apps/db_connection")
 
-# Create top appbar component (FIXED POSITION)
-# Create top appbar component (FIXED POSITION)
+#top appbar component (FIXED POSITION)
 def create_top_appbar():
     return html.Div([
         dbc.Row([
-            # Left side - Logo, App Name and Sidebar Toggle
             dbc.Col([
                 html.Div([
                     html.Button([
@@ -263,7 +261,7 @@ def create_top_appbar():
                 ], className="d-flex align-items-center")
             ], width=6, className="d-flex align-items-center"),
             
-            # Right side - Connection Status and Auth Button (aligned right)
+            #Connection Status and Auth Button (aligned right)
             dbc.Col([
                 html.Div([
                     # Connection Status
@@ -271,8 +269,8 @@ def create_top_appbar():
                     
                     # Dynamic Auth Button (Login/Logout)
                     html.Div(id="auth-button-container")
-                ], className="d-flex align-items-center justify-content-end")  # This ensures right alignment
-            ], width=6, className="d-flex align-items-center justify-content-end")  # Also align the column itself
+                ], className="d-flex align-items-center justify-content-end")  #right alignment
+            ], width=6, className="d-flex align-items-center justify-content-end")  #align the column itself
         ], className="gx-0")
     ], className="p-2 shadow", 
        style={
@@ -307,7 +305,7 @@ def create_sidebar():
             ], href="/apps/land_bank_analysis", active="exact"),
             
             dbc.NavLink([
-                html.I(className="fas fa-chart-line me-2"),
+                html.I(className="fas fa-dollar-sign me-2"),
                 html.Span("Sales Analysis", id="nav-text-sales-analysis", className="nav-text")
             ], href="/apps/sales_analysis", active="exact"),
             
@@ -689,4 +687,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8050))
     
     # Run the app
-    app.run(debug=True)
+    app.run()

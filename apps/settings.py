@@ -11,7 +11,6 @@ import uuid
 import os
 import pandas as pd
 import logging
-from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -21,15 +20,21 @@ logger = logging.getLogger(__name__)
 layout = dbc.Row([
     dbc.Col([
         html.H2([
-            html.I(className="fas fa-cog me-2"),
+            html.I(className="fas fa-cogs me-2"),
             "System Settings"
         ], className="mb-4 text-black"),
         
-        # Setting sections tabs
-        dbc.Tabs([
-            # Company Information Tab
-            dbc.Tab([
-                dbc.Card([
+        # Collapsible sections instead of tabs
+        html.Div([
+            # Company Information Section
+            dbc.Card([
+                dbc.CardHeader([
+                    dbc.Button([
+                        html.I(className="fas fa-building me-2"),
+                        "Company Information"
+                    ], id="company-collapse-button", color="white", className="w-100 text-white fw-bold")
+                ]),
+                dbc.Collapse([
                     dbc.CardBody([
                         dbc.Form([
                             dbc.Row([
@@ -79,13 +84,19 @@ layout = dbc.Row([
                             html.I(className="fas fa-save me-2"),
                             "Save Company Settings"
                         ], id="save-company-settings-btn", color="primary", size="lg", className="w-100 mt-3"),
-                    ]),
-                ], className="shadow-sm mb-4"),
-            ], label="Company Info", tab_id="company-tab", tabClassName="settings-tab"),
+                    ])
+                ], id="company-collapse", is_open=True)
+            ], className="shadow-sm mb-3"),
             
-            # Email settings tab
-            dbc.Tab([
-                dbc.Card([
+            # Email Settings Section
+            dbc.Card([
+                dbc.CardHeader([
+                    dbc.Button([
+                        html.I(className="fas fa-envelope me-2"),
+                        "Email Settings"
+                    ], id="email-collapse-button", color="white", className="w-100 text-white fw-bold")
+                ]),
+                dbc.Collapse([
                     dbc.CardBody([
                         html.H5("Email Configuration", className="mb-3 text-black"),
                         dbc.Form([
@@ -172,13 +183,19 @@ layout = dbc.Row([
                             "Send Test Email"
                         ], id="send-test-email-btn", color="info", className="w-100"),
                         html.Div(id="test-email-status", className="mt-2"),
-                    ]),
-                ], className="shadow-sm mb-4"),
-            ], label="Email Settings", tab_id="email-tab", tabClassName="settings-tab"),
+                    ])
+                ], id="email-collapse", is_open=False)
+            ], className="shadow-sm mb-3"),
             
-            # Targets settings tab
-            dbc.Tab([
-                dbc.Card([
+            # Targets Settings Section
+            dbc.Card([
+                dbc.CardHeader([
+                    dbc.Button([
+                        html.I(className="fas fa-bullseye me-2"),
+                        "Targets Configuration"
+                    ], id="targets-collapse-button", color="white", className="w-100 text-white fw-bold")
+                ]),
+                dbc.Collapse([
                     dbc.CardBody([
                         html.H5("Targets Configuration", className="mb-3 text-black"),
                         
@@ -190,7 +207,7 @@ layout = dbc.Row([
                                 dbc.Select(
                                     id="year-target-year",
                                     options=[{"label": str(year), "value": year} for year in range(2020, 2031)],
-                                    value=datetime.now().year
+                                    value=pd.Timestamp.now().year
                                 ),
                             ], width=12, md=4, className="mb-3"),
                             dbc.Col([
@@ -225,7 +242,7 @@ layout = dbc.Row([
                                 dbc.Select(
                                     id="month-target-year",
                                     options=[{"label": str(year), "value": year} for year in range(2020, 2031)],
-                                    value=datetime.now().year
+                                    value=pd.Timestamp.now().year
                                 ),
                             ], width=12, md=3, className="mb-3"),
                             dbc.Col([
@@ -246,7 +263,7 @@ layout = dbc.Row([
                                         {"label": "November", "value": 11},
                                         {"label": "December", "value": 12}
                                     ],
-                                    value=datetime.now().month
+                                    value=pd.Timestamp.now().month
                                 ),
                             ], width=12, md=3, className="mb-3"),
                             dbc.Col([
@@ -281,7 +298,7 @@ layout = dbc.Row([
                                 dbc.Select(
                                     id="week-target-year",
                                     options=[{"label": str(year), "value": year} for year in range(2020, 2031)],
-                                    value=datetime.now().year
+                                    value=pd.Timestamp.now().year
                                 ),
                             ], width=12, md=3, className="mb-3"),
                             dbc.Col([
@@ -292,7 +309,7 @@ layout = dbc.Row([
                                     placeholder="Enter week number (1-52)",
                                     min=1,
                                     max=52,
-                                    value=datetime.now().isocalendar()[1]
+                                    value=pd.Timestamp.now().isocalendar()[1]
                                 ),
                             ], width=12, md=3, className="mb-3"),
                             dbc.Col([
@@ -351,7 +368,7 @@ layout = dbc.Row([
                                 dbc.Select(
                                     id="project-target-year",
                                     options=[{"label": str(year), "value": year} for year in range(2020, 2031)],
-                                    value=datetime.now().year
+                                    value=pd.Timestamp.now().year
                                 ),
                             ], width=12, md=2, className="mb-3"),
                             
@@ -374,7 +391,7 @@ layout = dbc.Row([
                                             {"label": "November", "value": 11},
                                             {"label": "December", "value": 12}
                                         ],
-                                        value=datetime.now().month
+                                        value=pd.Timestamp.now().month
                                     )
                                 ]),
                             ], width=12, md=3, className="mb-3"),
@@ -411,10 +428,10 @@ layout = dbc.Row([
                         html.H5("Current Targets", className="mt-4 mb-3"),
                         html.Div(id="current-targets-display"),
                         
-                    ]),
-                ], className="shadow-sm mb-4"),
-            ], label="Targets", tab_id="targets-tab", tabClassName="settings-tab"),
-        ], id="settings-tabs", active_tab="company-tab", className="settings-tabs-container"),
+                    ])
+                ], id="targets-collapse", is_open=False)
+            ], className="shadow-sm mb-3"),
+        ], className="mb-4"),
         
         # Current settings display
         html.Hr(),
@@ -424,10 +441,42 @@ layout = dbc.Row([
     ], width=12, lg=8),
 ], className="justify-content-center g-0")
 
+# Collapse toggle callbacks
+@callback(
+    Output("company-collapse", "is_open"),
+    Input("company-collapse-button", "n_clicks"),
+    State("company-collapse", "is_open"),
+)
+def toggle_company_collapse(n_clicks, is_open):
+    if n_clicks:
+        return not is_open
+    return is_open
+
+@callback(
+    Output("email-collapse", "is_open"),
+    Input("email-collapse-button", "n_clicks"),
+    State("email-collapse", "is_open"),
+)
+def toggle_email_collapse(n_clicks, is_open):
+    if n_clicks:
+        return not is_open
+    return is_open
+
+@callback(
+    Output("targets-collapse", "is_open"),
+    Input("targets-collapse-button", "n_clicks"),
+    State("targets-collapse", "is_open"),
+)
+def toggle_targets_collapse(n_clicks, is_open):
+    if n_clicks:
+        return not is_open
+    return is_open
+
 def get_db_engine():
     """Get database engine from session"""
     if 'db_connection_string' in session and session['db_connection_string']:
         try:
+            # Use the connected database for settings instead of local settings.db
             engine = create_engine(session['db_connection_string'])
             return engine
         except Exception as e:
@@ -930,10 +979,10 @@ def handle_logo_upload(contents, filename):
      Output('current-settings-display', 'children'),
      Output('current-targets-display', 'children'),
      Output('project-target-project', 'options')],
-    Input('settings-tabs', 'active_tab')
+    Input('targets-collapse', 'is_open')
 )
-def load_current_settings(tab):
-    """Load current settings into form fields when tabs are switched"""
+def load_current_settings(is_open):
+    """Load current settings into form fields when targets section is opened"""
     engine = get_db_engine()
     if not engine:
         error_display = dbc.Alert([
@@ -1225,13 +1274,13 @@ def update_project_target_period_container(target_type):
                 {"label": "November", "value": 11},
                 {"label": "December", "value": 12}
             ],
-            value=datetime.now().month
+            value=pd.Timestamp.now().month
         )
     elif target_type == 'weekly':
         return dbc.Select(
             id="project-target-month-week",
             options=[{"label": f"Week {i}", "value": i} for i in range(1, 53)],
-            value=datetime.now().isocalendar()[1]
+            value=pd.Timestamp.now().isocalendar()[1]
         )
     else:  # yearly
         return html.Div("N/A - Yearly targets don't require period selection")

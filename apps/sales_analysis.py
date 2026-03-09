@@ -25,7 +25,7 @@ layout = html.Div([
     ], className="mt-3 mb-4 text-center"),
     
     dbc.Container([
-        # Filter Section - Similar to Dashboard Layout
+        # Filter Section - Copied from Project Analysis
         dbc.Row([
             dbc.Col([
                 html.Div([
@@ -41,30 +41,6 @@ layout = html.Div([
             dbc.Card([
                 dbc.CardBody([
                     dbc.Row([
-                        # Time Range Filter
-                        dbc.Col([
-                            html.Div([
-                                html.Small([
-                                    html.I(className="fas fa-clock me-1"),
-                                    "Time Range"
-                                ], className="text-muted mb-1 d-block fw-bold"),
-                                dcc.RadioItems(
-                                    id="sales-time-filter-radio",
-                                    options=[
-                                        {"label": "Daily", "value": "daily"},
-                                        {"label": "Weekly", "value": "weekly"},
-                                        {"label": "Monthly", "value": "monthly"},
-                                        {"label": "Yearly", "value": "yearly"}
-                                    ],
-                                    value="yearly",
-                                    inline=True,
-                                    className="modern-radio-group",
-                                    inputClassName="me-1",
-                                    labelClassName="d-inline-block me-2 mb-1"
-                                )
-                            ])
-                        ], width=12, md=6, className="mb-3 mb-md-0"),
-                        
                         # Year Filter
                         dbc.Col([
                             html.Div([
@@ -115,10 +91,8 @@ layout = html.Div([
                                 )
                             ])
                         ], width=12, md=3, className="mb-3 mb-md-0"),
-                    ], className="g-3 align-items-end mb-3"),
-                    
-                    dbc.Row([
-                        # Week Filter
+                        
+                        # Week Filter - Updated to match settings.py format
                         dbc.Col([
                             html.Div([
                                 html.Small([
@@ -132,24 +106,7 @@ layout = html.Div([
                                     className="modern-dropdown"
                                 )
                             ])
-                        ], width=12, md=4, className="mb-3 mb-md-0"),
-                        
-                        # Day Filter
-                        dbc.Col([
-                            html.Div([
-                                html.Small([
-                                    html.I(className="fas fa-calendar-day me-1"),
-                                    "Select Day"
-                                ], className="text-muted mb-1 d-block fw-bold"),
-                                dcc.Dropdown(
-                                    id="sales-day-dropdown",
-                                    options=[{'label': str(day), 'value': day} for day in range(1, 32)],
-                                    value=datetime.datetime.now().day,
-                                    clearable=False,
-                                    className="modern-dropdown"
-                                )
-                            ])
-                        ], width=12, md=4, className="mb-3 mb-md-0"),
+                        ], width=12, md=3, className="mb-3 mb-md-0"),
                         
                         # Refresh Button
                         dbc.Col([
@@ -159,9 +116,9 @@ layout = html.Div([
                                     "Refresh Analysis"
                                 ], id="refresh-sales-button", color="primary", className="w-100")
                             ], className="d-flex align-items-end")
-                        ], width=12, md=4)
+                        ], width=12, md=3)
                     ], className="g-3 align-items-end")
-                ], style={"minHeight": "380px", "paddingBottom": "20px"})
+                ], style={"minHeight": "300px", "paddingBottom": "20px"})
             ], className="shadow-sm mb-4")
         ], id="sales-filter-collapse", is_open=False),
         
@@ -289,14 +246,13 @@ def toggle_sales_filter_collapse(n_clicks, is_open):
 
 # Callback to populate week dropdown based on year and month (4 weeks per month)
 @callback(
-    [Output("sales-week-dropdown", "options"),
-     Output("sales-day-dropdown", "options")],
+    Output("sales-week-dropdown", "options"),
     [Input("sales-year-dropdown", "value"),
      Input("sales-month-dropdown", "value")]
 )
-def populate_weeks_and_days(selected_year, selected_month):
+def populate_weeks(selected_year, selected_month):
     if selected_month == 0:  # All months
-        return [], [{'label': str(day), 'value': day} for day in range(1, 32)]
+        return []
     
     try:
         # Create 4 weeks per month
@@ -312,37 +268,14 @@ def populate_weeks_and_days(selected_year, selected_month):
                 'value': week_num
             })
         
-        # Get days in the selected month
-        days = [{'label': str(day), 'value': day} for day in range(1, days_in_month + 1)]
-        
-        return weeks, days
+        return weeks
     except Exception as e:
-        print(f"Error populating weeks and days: {e}")
-        return [], [{'label': str(day), 'value': day} for day in range(1, 32)]
+        print(f"Error populating weeks: {e}")
+        return []
 
-# Callback to control dropdown visibility based on time filter
-@callback(
-    [Output("sales-month-dropdown", "style"),
-     Output("sales-week-dropdown", "style"),
-     Output("sales-day-dropdown", "style")],
-    Input("sales-time-filter-radio", "value")
-)
-def toggle_dropdowns_visibility(time_filter):
-    month_style = {"display": "block"} if time_filter in ["monthly", "weekly", "daily"] else {"display": "none"}
-    week_style = {"display": "block"} if time_filter == "weekly" else {"display": "none"}
-    day_style = {"display": "block"} if time_filter == "daily" else {"display": "none"}
-    
-    # Apply default styling
-    base_style = {"display": "inline-block", "width": "100%"}
-    month_final = {**base_style, **month_style}
-    week_final = {**base_style, **week_style}
-    day_final = {**base_style, **day_style}
-    
-    return month_final, week_final, day_final
-
-# Function to get target period based on time filter
-def get_target_period_info(time_filter, selected_year, selected_month, selected_week):
-    """Get target period information for matching with targets"""
+# Function to determine target period based on filters
+def get_target_period_info(selected_year, selected_month, selected_week):
+    """Determine the appropriate target period based on filters"""
     target_info = {
         'target_type': 'yearly',
         'target_year': selected_year,
@@ -350,46 +283,68 @@ def get_target_period_info(time_filter, selected_year, selected_month, selected_
         'target_week': None
     }
     
-    if time_filter == "monthly":
-        target_info['target_type'] = 'monthly'
-        target_info['target_month'] = selected_month if selected_month != 0 else None
-    elif time_filter == "weekly":
-        target_info['target_type'] = 'weekly'
-        target_info['target_week'] = selected_week
-        target_info['target_month'] = selected_month if selected_month != 0 else None
-    elif time_filter == "daily":
-        # For daily, we'll match with weekly targets
-        target_info['target_type'] = 'weekly'
-        target_info['target_week'] = selected_week
-        target_info['target_month'] = selected_month if selected_month != 0 else None
-        
+    if selected_month != 0:  # Month selected
+        if selected_week:  # Week selected
+            target_info['target_type'] = 'weekly'
+            target_info['target_month'] = selected_month
+            target_info['target_week'] = selected_week
+        else:  # Month only
+            target_info['target_type'] = 'monthly'
+            target_info['target_month'] = selected_month
+    # If neither month nor week selected, it's yearly
+    
     return target_info
 
-# Function to get targets for projects
+# Function to get project targets from database
 def get_project_targets(engine, target_type, target_year, target_month=None, target_week=None):
-    """Get project targets from database"""
+    """Get project targets from database based on target period"""
     try:
-        # Get project-specific targets
-        project_targets_query = """
-        SELECT 
-            pt.project_id,
-            p.name as project_name,
-            pt.sales_target,
-            pt.stands_target
-        FROM aibesinsights_project_targets pt
-        LEFT JOIN Projects p ON pt.project_id = p.id
-        WHERE pt.target_type = :target_type 
-        AND pt.target_year = :target_year
-        AND (:target_month IS NULL OR pt.target_month = :target_month)
-        AND (:target_week IS NULL OR pt.target_week = :target_week)
-        """
-        
-        params = {
-            'target_type': target_type,
-            'target_year': target_year,
-            'target_month': target_month,
-            'target_week': target_week
-        }
+        # Query for project-specific targets with proper NULL handling
+        if target_type == 'yearly':
+            project_targets_query = """
+            SELECT 
+                pt.project_id,
+                p.name as project_name,
+                pt.sales_target,
+                pt.stands_target
+            FROM aibesinsights_project_targets pt
+            LEFT JOIN Projects p ON pt.project_id = p.id
+            WHERE pt.target_type = %s 
+            AND pt.target_year = %s
+            AND pt.target_month IS NULL
+            AND pt.target_week IS NULL
+            """
+            params = (target_type, target_year)
+        elif target_type == 'monthly':
+            project_targets_query = """
+            SELECT 
+                pt.project_id,
+                p.name as project_name,
+                pt.sales_target,
+                pt.stands_target
+            FROM aibesinsights_project_targets pt
+            LEFT JOIN Projects p ON pt.project_id = p.id
+            WHERE pt.target_type = %s 
+            AND pt.target_year = %s
+            AND pt.target_month = %s
+            AND pt.target_week IS NULL
+            """
+            params = (target_type, target_year, target_month)
+        elif target_type == 'weekly':
+            project_targets_query = """
+            SELECT 
+                pt.project_id,
+                p.name as project_name,
+                pt.sales_target,
+                pt.stands_target
+            FROM aibesinsights_project_targets pt
+            LEFT JOIN Projects p ON pt.project_id = p.id
+            WHERE pt.target_type = %s 
+            AND pt.target_year = %s
+            AND pt.target_month = %s
+            AND pt.target_week = %s
+            """
+            params = (target_type, target_year, target_month, target_week)
         
         project_targets_df = pd.read_sql(project_targets_query, engine, params=params)
         return project_targets_df
@@ -397,7 +352,7 @@ def get_project_targets(engine, target_type, target_year, target_month=None, tar
         print(f"Error getting project targets: {e}")
         return pd.DataFrame()
 
-#sales analysis callback
+#sales analysis callback - FIXED: Added filter inputs to trigger callback
 @callback(
     [Output("total-sales", "children"),
      Output("total-stands-sold", "children"),
@@ -406,14 +361,13 @@ def get_project_targets(engine, target_type, target_year, target_month=None, tar
      Output("project-sales-chart", "figure"),
      Output("agent-sales-chart", "figure"),
      Output("targets-vs-achieved-chart", "figure")],
-    [Input("refresh-sales-button", "n_clicks")],
-    [Input("sales-time-filter-radio", "value"),
+    [Input("refresh-sales-button", "n_clicks"),
      Input("sales-year-dropdown", "value"),
      Input("sales-month-dropdown", "value"),
-     Input("sales-day-dropdown", "value"),
-     Input("sales-week-dropdown", "value")]
+     Input("sales-week-dropdown", "value")],
+    prevent_initial_call=False
 )
-def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, selected_day, selected_week):
+def update_sales_analysis(n_clicks, selected_year, selected_month, selected_week):
     engine = get_user_db_engine()
     
     if not engine:
@@ -423,31 +377,19 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
         return ["$0.00", "0 stands", "$0.00", "N/A", empty_fig, empty_fig, empty_fig]
     
     try:
-        # Build WHERE clause based on time filter
-        if time_filter == "daily":
-            # For daily, use the selected day
-            if selected_month != 0:
-                date_condition = f"DATE(ca.registration_date) = '{selected_year}-{selected_month:02d}-{selected_day:02d}'"
-            else:
-                date_condition = f"YEAR(ca.registration_date) = {selected_year} AND DAY(ca.registration_date) = {selected_day}"
-        elif time_filter == "weekly":
-            if selected_week and selected_month != 0:
-                # Calculate week boundaries (4 weeks per month)
-                days_in_month = calendar.monthrange(selected_year, selected_month)[1]
-                days_per_week = max(1, days_in_month // 4)
-                start_day = (selected_week - 1) * days_per_week + 1
-                end_day = min(selected_week * days_per_week, days_in_month)
-                date_condition = f"DAY(ca.registration_date) BETWEEN {start_day} AND {end_day} AND MONTH(ca.registration_date) = {selected_month} AND YEAR(ca.registration_date) = {selected_year}"
-            elif selected_month != 0:
-                date_condition = f"YEAR(ca.registration_date) = {selected_year} AND MONTH(ca.registration_date) = {selected_month}"
-            else:
-                date_condition = f"YEAR(ca.registration_date) = {selected_year}"
-        elif time_filter == "monthly":
-            if selected_month != 0:
-                date_condition = f"YEAR(ca.registration_date) = {selected_year} AND MONTH(ca.registration_date) = {selected_month}"
-            else:
-                date_condition = f"YEAR(ca.registration_date) = {selected_year}"
-        else:  # yearly
+        # Build WHERE clause based on filters
+        if selected_week and selected_month != 0:
+            # Weekly filter
+            days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+            days_per_week = max(1, days_in_month // 4)
+            start_day = (selected_week - 1) * days_per_week + 1
+            end_day = min(selected_week * days_per_week, days_in_month)
+            date_condition = f"DAY(ca.registration_date) BETWEEN {start_day} AND {end_day} AND MONTH(ca.registration_date) = {selected_month} AND YEAR(ca.registration_date) = {selected_year}"
+        elif selected_month != 0:
+            # Monthly filter
+            date_condition = f"YEAR(ca.registration_date) = {selected_year} AND MONTH(ca.registration_date) = {selected_month}"
+        else:
+            # Yearly filter
             date_condition = f"YEAR(ca.registration_date) = {selected_year}"
         
         # Add condition to exclude deleted records
@@ -523,7 +465,9 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
             ))
             
             project_fig.update_layout(
-                title=f"Project Sales Comparison ({time_filter.title()})",
+                title=f"Project Sales Comparison ({selected_year}" + 
+                      (f"-{selected_month}" if selected_month != 0 else "") + 
+                      (f"-W{selected_week}" if selected_week and selected_month != 0 else "") + ")",
                 xaxis_title="Project",
                 yaxis_title="Stands Sold",
                 yaxis2=dict(
@@ -567,7 +511,9 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
                 customdata=agent_df['stands_sold']
             )])
             agent_fig.update_layout(
-                title=f"Sales by Agent ({time_filter.title()})",
+                title=f"Sales by Agent ({selected_year}" + 
+                      (f"-{selected_month}" if selected_month != 0 else "") + 
+                      (f"-W{selected_week}" if selected_week and selected_month != 0 else "") + ")",
                 showlegend=True,
                 template='plotly_white'
             )
@@ -577,7 +523,7 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
         
         # TARGETS VS ACHIEVED CHART
         # Get target period information
-        target_info = get_target_period_info(time_filter, selected_year, selected_month, selected_week)
+        target_info = get_target_period_info(selected_year, selected_month, selected_week)
         
         # Get project targets
         project_targets_df = get_project_targets(
@@ -604,7 +550,7 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
         actual_sales_df = pd.read_sql(actual_sales_query, engine)
         
         if not actual_sales_df.empty:
-            # Merge actual sales with targets
+            # Merge actual sales with project targets
             if not project_targets_df.empty:
                 merged_df = pd.merge(
                     actual_sales_df, 
@@ -613,12 +559,12 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
                     how='left'
                 )
             else:
-                # If no targets set, create empty target columns
+                # If no project targets set, create empty target columns
                 merged_df = actual_sales_df.copy()
                 merged_df['sales_target'] = None
                 merged_df['stands_target'] = None
             
-            # Create targets vs achieved chart
+            # Create targets vs achieved chart - Bar graph comparison
             targets_fig = go.Figure()
             
             # Add actual sales bars
@@ -631,7 +577,7 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
                 textposition='auto'
             ))
             
-            # Add sales targets (if available)
+            # Add sales targets bars
             if 'sales_target' in merged_df.columns and not merged_df['sales_target'].isnull().all():
                 targets_fig.add_trace(go.Bar(
                     name='Sales Target ($)',
@@ -642,39 +588,26 @@ def update_sales_analysis(n_clicks, time_filter, selected_year, selected_month, 
                     textposition='auto'
                 ))
             
-            # Add achievement percentage as line chart on secondary axis
+            # Add achievement percentage as annotations
             if 'sales_target' in merged_df.columns:
-                achievement_pct = []
-                for _, row in merged_df.iterrows():
+                for i, row in merged_df.iterrows():
                     if pd.notnull(row['sales_target']) and row['sales_target'] > 0:
                         pct = (row['total_sales'] / row['sales_target']) * 100
-                        achievement_pct.append(pct)
-                    else:
-                        achievement_pct.append(None)
-                
-                targets_fig.add_trace(go.Scatter(
-                    name='Achievement %',
-                    x=merged_df['project_name'],
-                    y=achievement_pct,
-                    mode='lines+markers',
-                    line=dict(color='#007bff', width=3),
-                    marker=dict(size=8),
-                    yaxis='y2',
-                    text=[f"{pct:.1f}%" if pd.notnull(pct) else "N/A" for pct in achievement_pct],
-                    textposition='top center'
-                ))
+                        targets_fig.add_annotation(
+                            x=row['project_name'],
+                            y=max(row['total_sales'] if pd.notnull(row['total_sales']) else 0, 
+                                  row['sales_target'] if pd.notnull(row['sales_target']) else 0),
+                            text=f"{pct:.1f}%",
+                            showarrow=False,
+                            yshift=10
+                        )
             
             targets_fig.update_layout(
-                title=f"Sales Targets vs Achieved by Project ({time_filter.title()}, {selected_year}" + 
-                      (f"-{selected_month}" if selected_month != 0 and time_filter in ['monthly', 'weekly', 'daily'] else "") + ")",
+                title=f"Sales Targets vs Achieved by Project ({selected_year}" + 
+                      (f"-{selected_month}" if selected_month != 0 else "") + 
+                      (f"-W{selected_week}" if selected_week and selected_month != 0 else "") + ")",
                 xaxis_title="Project",
                 yaxis_title="Amount ($)",
-                yaxis2=dict(
-                    title="Achievement %",
-                    overlaying='y',
-                    side='right',
-                    range=[0, 150]  # Set range for percentage axis
-                ),
                 barmode='group',
                 xaxis_tickangle=-45,
                 template='plotly_white',

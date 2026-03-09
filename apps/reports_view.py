@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Simple layout without sidebar/appbar - these will be added by app.py
 layout = html.Div([
-    # Loading wrapper for main content
+    # Loading wrapper for main content - ENLARGED LOADING INDICATOR
     dcc.Loading(
         id="loading-main",
         type="default",
@@ -203,6 +203,28 @@ layout = html.Div([
                 ], className="mb-4"),
             ])
         ]
+    ),
+    
+    # ENHANCED LOADING OVERLAY - FULL SCREEN WITH LARGE SPINNER
+    html.Div(
+        id="full-screen-loading",
+        children=[
+            html.Div([
+                html.Div(className="spinner-border text-primary", style={"width": "3rem", "height": "3rem"}),
+                html.H4("Loading Reports...", className="mt-3 text-white"),
+                html.P("Please wait while we process your request", className="text-white")
+            ], className="d-flex flex-column align-items-center justify-content-center", 
+            style={"height": "100vh", "backgroundColor": "rgba(0,0,0,0.7)"})
+        ],
+        style={
+            "position": "fixed",
+            "top": 0,
+            "left": 0,
+            "width": "100%",
+            "height": "100%",
+            "zIndex": 9999,
+            "display": "none"
+        }
     ),
     
     # Hidden divs to store current filenames
